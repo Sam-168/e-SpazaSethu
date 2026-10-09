@@ -33,6 +33,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
@@ -146,8 +147,11 @@ class SaleServiceTest {
 
         when(productRepository.findByIdForUpdate("prod-soda")).thenReturn(Optional.of(soda));
 
-        // Act & Assert
-        assertThatThrownBy(() -> saleService.completeSale(request, userId))
+        // Act
+        Throwable thrown = catchThrowable(() -> saleService.completeSale(request, userId));
+
+        // Assert
+        assertThat(thrown)
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Insufficient stock");
 
@@ -174,8 +178,11 @@ class SaleServiceTest {
         when(productRepository.findByIdForUpdate("prod-1")).thenReturn(Optional.of(item1));
         when(productRepository.findByIdForUpdate("prod-2")).thenReturn(Optional.of(item2));
 
-        // Act & Assert
-        assertThatThrownBy(() -> saleService.completeSale(request, userId))
+        // Act
+        Throwable thrown = catchThrowable(() -> saleService.completeSale(request, userId));
+
+        // Assert
+        assertThat(thrown)
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Insufficient stock");
 
@@ -198,8 +205,11 @@ class SaleServiceTest {
                 "Empty cart sale"
         );
 
-        // Act & Assert
-        assertThatThrownBy(() -> saleService.completeSale(request, userId))
+        // Act
+        Throwable thrown = catchThrowable(() -> saleService.completeSale(request, userId));
+
+        // Assert
+        assertThat(thrown)
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("A sale must contain at least one item");
 
@@ -217,8 +227,11 @@ class SaleServiceTest {
 
         when(productRepository.findByIdForUpdate("non-existent-product")).thenReturn(Optional.empty());
 
-        // Act & Assert
-        assertThatThrownBy(() -> saleService.completeSale(request, userId))
+        // Act
+        Throwable thrown = catchThrowable(() -> saleService.completeSale(request, userId));
+
+        // Assert
+        assertThat(thrown)
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Product not found: non-existent-product");
 

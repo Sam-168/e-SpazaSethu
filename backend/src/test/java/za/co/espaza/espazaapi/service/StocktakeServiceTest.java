@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
@@ -115,8 +116,11 @@ class StocktakeServiceTest {
         when(stocktakeRepository.findByStatusAndConductedBy(StocktakeStatus.IN_PROGRESS, userId))
                 .thenReturn(Optional.of(ongoing));
 
-        // Act & Assert
-        assertThatThrownBy(() -> stocktakeService.startStocktake(userId))
+        // Act
+        Throwable thrown = catchThrowable(() -> stocktakeService.startStocktake(userId));
+
+        // Assert
+        assertThat(thrown)
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("already in progress");
 
