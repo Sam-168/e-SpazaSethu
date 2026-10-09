@@ -63,6 +63,7 @@ public class Stocktake {
     }
 
     public Stocktake(UUID conductedBy, String notes) {
+        this.stocktakeId = UUID.randomUUID();
         this.conductedBy = conductedBy;
         this.notes = notes;
         this.startedAt = LocalDateTime.now();
