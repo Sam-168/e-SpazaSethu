@@ -1,6 +1,9 @@
 package za.co.espaza.backend.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class CreateCategoryRequest {
+    @NotBlank(message = "Category name is required")
     private String name;
     private String description;
 

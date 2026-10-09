@@ -3,7 +3,7 @@ package za.co.espaza.backend.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import za.co.espaza.backend.dto.request.CreateProductRequest;
 import za.co.espaza.backend.dto.response.ProductResponse;
@@ -45,7 +45,7 @@ public class ProductController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductResponse> createProduct(
-            @Validated @RequestBody CreateProductRequest request) {
+            @Valid @RequestBody CreateProductRequest request) {
         ProductResponse created = productService.createProduct(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -53,7 +53,7 @@ public class ProductController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable("id") String id,
-            @Validated @RequestBody UpdateProductRequest request) {
+            @Valid @RequestBody UpdateProductRequest request) {
         return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 

@@ -1,12 +1,21 @@
 package za.co.espaza.backend.dto.request;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 
 public class UpdateProductRequest {
+    // Partial update: null means "leave unchanged". @NotBlank would also reject
+    // null (making name mandatory), so @Pattern is used instead — it passes for
+    // null but rejects empty/whitespace-only names.
+    @Pattern(regexp = ".*\\S.*", message = "Product name must not be blank")
     private String name;
     private String barcode;
+    @Min(value = 0, message = "Selling price must be 0 or more")
     private BigDecimal sellingPrice;
+    @Min(value = 0, message = "Cost price must be 0 or more")
     private BigDecimal costPrice;
+    @Min(value = 0, message = "Low stock threshold must be 0 or more")
     private Integer lowStockThreshold;
     private String categoryId;
     private String description;

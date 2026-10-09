@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 import za.co.espaza.backend.dto.request.StocktakeCountRequest;
 import za.co.espaza.backend.dto.response.StocktakeResponse;
 import za.co.espaza.backend.security.CurrentUserService;
@@ -56,7 +57,7 @@ public class StocktakeController {
     @PostMapping("/{id}/items")
     public ResponseEntity<StocktakeResponse> submitCounts(
             @PathVariable UUID id,
-            @RequestBody List<StocktakeCountRequest> counts) {
+            @Valid @RequestBody List<StocktakeCountRequest> counts) {
         return ResponseEntity.ok(stocktakeService.submitCounts(id, counts));
     }
 
