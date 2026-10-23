@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
-import BottomNav from '../components/layout/BottomNav';
+import AppShell from '../components/layout/AppShell';
+import PlaceholderPage from '../components/layout/PlaceholderPage';
+import { BarChart3, ClipboardCheck, Package, Settings, ShoppingBasket, SlidersHorizontal, Users } from 'lucide-react';
 
 import LoginPage from '../pages/LoginPage';
 import DashboardPage from '../pages/DashboardPage';
@@ -14,26 +16,24 @@ const AppRouter = () => (
             <Route path="/login" element={<LoginPage />} />
 
             <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/sales" element={<SalesHistoryPage />} />
-                <Route path="/sales/:id" element={<SaleDetailPage />} />
-
-                {/* placeholders — build out as their own issues land */}
-                <Route path="/pos" element={<div>POS</div>} />
-                <Route path="/products" element={<div>Products</div>} />
-                <Route path="/products/new" element={<div>Add Product</div>} />
-                <Route path="/products/:id/edit" element={<div>Edit Product</div>} />
-                <Route path="/reports" element={<div>Reports</div>} />
-                <Route path="/stocktake" element={<div>Stocktake</div>} />
-                <Route path="/settings" element={<div>Settings</div>} />
-
-                <Route element={<AdminRoute />}>
-                    <Route path="/movements" element={<div>Stock Movements</div>} />
-                    <Route path="/settings/users" element={<div>User Management</div>} />
+                <Route element={<AppShell />}>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/sales" element={<SalesHistoryPage />} />
+                    <Route path="/sales/:id" element={<SaleDetailPage />} />
+                    <Route path="/pos" element={<PlaceholderPage title="New sale" description="Find products and complete a sale." feature="F05" icon={ShoppingBasket} />} />
+                    <Route path="/products" element={<PlaceholderPage title="Products" description="Manage the shop catalogue and stock levels." feature="F04" icon={Package} />} />
+                    <Route path="/products/new" element={<PlaceholderPage title="Add product" description="Add a product to the shop catalogue." feature="F04" icon={Package} />} />
+                    <Route path="/products/:id/edit" element={<PlaceholderPage title="Edit product" description="Update product details and availability." feature="F04" icon={Package} />} />
+                    <Route path="/reports" element={<PlaceholderPage title="Reports" description="Understand sales, profit and product performance." feature="F10" icon={BarChart3} />} />
+                    <Route path="/settings" element={<PlaceholderPage title="Settings" description="Manage shop and account preferences." feature="F12" icon={Settings} />} />
+                    <Route element={<AdminRoute />}>
+                        <Route path="/stocktake" element={<PlaceholderPage title="Stocktake" description="Count physical stock and review discrepancies." feature="F09" icon={ClipboardCheck} />} />
+                        <Route path="/movements" element={<PlaceholderPage title="Stock movements" description="Review and adjust the shop's stock audit trail." feature="F08" icon={SlidersHorizontal} />} />
+                        <Route path="/settings/users" element={<PlaceholderPage title="Users" description="Manage administrators and cashiers." feature="F11" icon={Users} />} />
+                    </Route>
                 </Route>
             </Route>
         </Routes>
-        <BottomNav />
     </BrowserRouter>
 );
 

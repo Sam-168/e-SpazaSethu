@@ -1,1 +1,111 @@
+@import "@fontsource-variable/geist";
 @import "tailwindcss";
+
+@theme {
+    --font-sans: "Geist Variable", "Geist", Arial, sans-serif;
+    --color-brand-50: #eefbf8;
+    --color-brand-100: #d7f5ef;
+    --color-brand-200: #afeadd;
+    --color-brand-300: #73d8c7;
+    --color-brand-400: #36bdaa;
+    --color-brand-500: #149b8b;
+    --color-brand-600: #0d7f73;
+    --color-brand-700: #0f665e;
+    --color-brand-800: #11524d;
+    --color-brand-900: #10443f;
+    --color-brand-950: #062825;
+    --color-warning-50: #fff7ed;
+    --color-warning-100: #ffedd5;
+    --color-warning-500: #f26a2e;
+    --color-warning-700: #c2410c;
+    --color-ink: #111827;
+    --color-muted: #667085;
+    --color-canvas: #f7f9f8;
+    --color-line: #d9e0de;
+}
+
+:root {
+    font-family: "Geist Variable", "Geist", Arial, sans-serif;
+    color: #111827;
+    background: #f7f9f8;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body,
+#root {
+    min-width: 320px;
+    min-height: 100%;
+    margin: 0;
+    background: #f7f9f8;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+button,
+input,
+select,
+textarea { font: inherit; }
+
+button,
+a { -webkit-tap-highlight-color: transparent; }
+
+button:not(:disabled),
+a[href] { cursor: pointer; }
+
+:focus-visible {
+    outline: 3px solid rgba(20, 155, 139, 0.35);
+    outline-offset: 2px;
+}
+
+@layer components {
+    .app-page {
+        width: 100%;
+        max-width: 48rem;
+        margin-inline: auto;
+        padding: 1.25rem 1rem 7rem;
+    }
+
+    .surface-panel {
+        border: 1px solid var(--color-line);
+        background: #ffffff;
+    }
+
+    .interactive-row {
+        display: flex;
+        min-height: 3.25rem;
+        width: 100%;
+        align-items: center;
+        border-bottom: 1px solid var(--color-line);
+        padding: 0.75rem 0;
+        color: var(--color-ink);
+    }
+}
+
+@media (min-width: 768px) {
+    @layer components {
+        .app-page {
+            padding-inline: 1.5rem;
+            padding-top: 1.75rem;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
