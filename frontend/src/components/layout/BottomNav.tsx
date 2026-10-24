@@ -127,7 +127,7 @@ export default function BottomNav() {
 
             <nav
                 aria-label="Primary navigation"
-                className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white"
+                className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white print:hidden"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
                 <div className="mx-auto grid max-w-lg grid-cols-4">

@@ -64,6 +64,6 @@ public class SaleController {
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SaleResponse> cancelSale(@PathVariable UUID id) {
-        return ResponseEntity.ok(saleService.cancelSale(id));
+        return ResponseEntity.ok(saleService.cancelSale(id, currentUserService.getCurrentUserId()));
     }
 }

@@ -1,266 +1,43 @@
-import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Check, Copy, Printer, RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
 import api from '../services/api';
+import type { Sale } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/Button';
+import { Dialog } from '../components/ui/Dialog';
+import { LoadingState } from '../components/ui/LoadingState';
+import { PageHeader } from '../components/ui/PageHeader';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { formatCurrency, formatDateTime } from '../utils/format';
+import { getApiErrorMessage } from '../utils/api-error';
 
-type LoadState = 'loading' | 'success' | 'error';
+const paymentLabels: Record<string,string>={CASH:'Cash',CARD:'Card',MOBILE_PAYMENT:'Mobile payment'};
 
-// Defined locally rather than imported from '../types': the shared types
-// file already has a differently-shaped SaleItem (Amanda's side), and
-// GET /sales/:id's exact response shape isn't confirmed yet. Once the
-// backend contract is settled, swap this for the real shared type.
-interface SaleLineItem {
-    productId: string;
-    productName: string;
-    quantity: number;
-    unitPrice: number;
-    subtotal: number;
+export default function SaleDetailPage(){
+    const {id}=useParams<{id:string}>(); const navigate=useNavigate(); const {currentUser}=useAuth(); const admin=currentUser?.role==='ADMIN';
+    const [sale,setSale]=useState<Sale|null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState<string|null>(null); const [confirm,setConfirm]=useState(false); const [cancelling,setCancelling]=useState(false); const [copied,setCopied]=useState(false);
+    const load=useCallback(async()=>{if(!id)return;setLoading(true);setError(null);try{const {data}=await api.get<Sale>(`/sales/${id}`);setSale(data);}catch(caught){setError(getApiErrorMessage(caught,'This receipt could not be loaded.'));}finally{setLoading(false);}},[id]);
+    useEffect(()=>{
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- receipt id changes intentionally trigger a remote refresh
+        void load();
+    },[load]);
+    const cancel=async()=>{if(!id)return;setCancelling(true);setError(null);try{const {data}=await api.patch<Sale>(`/sales/${id}/cancel`);setSale(data);setConfirm(false);}catch(caught){setError(getApiErrorMessage(caught,'The sale could not be cancelled.'));setConfirm(false);}finally{setCancelling(false);}};
+    const copyId=async()=>{if(!sale)return;await navigator.clipboard.writeText(sale.saleId);setCopied(true);window.setTimeout(()=>setCopied(false),1500);};
+    if(loading)return <div className="app-page max-w-3xl"><LoadingState label="Loading receipt" /></div>;
+    if(error&&!sale)return <div className="app-page flex min-h-[70vh] items-center justify-center"><div className="w-full max-w-md border-y border-line py-10 text-center"><TriangleAlert className="mx-auto h-8 w-8 text-red-600" /><h1 className="mt-3 text-lg font-semibold">Receipt unavailable</h1><p className="mt-2 text-sm text-muted">{error}</p><Button className="mt-5" leadingIcon={<RefreshCw className="h-4 w-4" />} onClick={()=>void load()}>Try again</Button></div></div>;
+    if(!sale)return null; const cancelled=sale.status==='CANCELLED'; const units=sale.items.reduce((sum,item)=>sum+item.quantity,0);
+    return <div className="app-page max-w-3xl"><div className="print:hidden"><PageHeader title={`Receipt #${sale.saleId.slice(0,8).toUpperCase()}`} description={formatDateTime(sale.saleDateTime)} onBack={()=>navigate('/sales')} action={<Button variant="secondary" leadingIcon={<Printer className="h-4 w-4" />} onClick={()=>window.print()}><span className="hidden sm:inline">Print</span></Button>} /></div>
+        <header className="hidden print:block"><h1 className="text-2xl font-semibold">e-SpazaSethu receipt</h1><p className="mt-1 text-sm">#{sale.saleId}</p><p className="text-sm">{formatDateTime(sale.saleDateTime)}</p></header>
+        {error&&<p role="alert" className="mb-4 bg-red-50 px-4 py-3 text-sm text-red-700 print:hidden">{error}</p>}
+        {cancelled&&<div className="mb-5 flex items-start gap-3 border-l-4 border-red-600 bg-red-50 px-4 py-3 text-sm text-red-800"><RotateCcw className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-semibold">Sale cancelled</p><p className="mt-0.5">The sold quantities were returned to stock and recorded in the audit trail.</p></div></div>}
+        <section className="mb-7 grid gap-0 border-y border-line bg-white sm:grid-cols-2"><Meta label="Cashier" value={sale.cashierName} /><Meta label="Payment" value={paymentLabels[sale.paymentMethod]||sale.paymentMethod} /><Meta label="Items" value={`${units} ${units===1?'unit':'units'}`} /><Meta label="Status" value={<StatusBadge tone={cancelled?'danger':'success'}>{cancelled?'Cancelled':'Completed'}</StatusBadge>} /></section>
+        <section aria-labelledby="items-heading"><div className="mb-3 flex items-center justify-between"><h2 id="items-heading" className="text-sm font-semibold uppercase tracking-wide text-muted">Items sold</h2><button onClick={()=>void copyId()} className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-brand-700 print:hidden">{copied?<Check className="h-4 w-4" />:<Copy className="h-4 w-4" />}{copied?'Copied':'Copy receipt ID'}</button></div>
+            <div className="border-y border-line bg-white"><div className="hidden grid-cols-[1fr_5rem_8rem_8rem] gap-3 border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted sm:grid"><span>Product</span><span className="text-center">Qty</span><span className="text-right">Price</span><span className="text-right">Subtotal</span></div><ul className="divide-y divide-line">{sale.items.map((item,index)=><li key={`${item.productId}-${index}`} className="grid grid-cols-[1fr_auto] gap-2 px-4 py-4 sm:grid-cols-[1fr_5rem_8rem_8rem] sm:items-center sm:gap-3"><div><p className="font-semibold text-ink">{item.productName||'Product unavailable'}</p><p className="mt-0.5 text-xs text-muted sm:hidden">{item.quantity} × {formatCurrency(item.unitPrice)}</p></div><p className="hidden text-center text-sm text-muted sm:block">{item.quantity}</p><p className="hidden text-right text-sm text-muted sm:block">{formatCurrency(item.unitPrice)}</p><p className="text-right font-semibold text-ink">{formatCurrency(item.subtotal)}</p></li>)}</ul></div>
+        </section>
+        <div className="mt-5 flex items-end justify-between border-y border-line py-5"><div><p className="text-sm text-muted">Total paid</p><p className="mt-1 text-xs text-muted">{paymentLabels[sale.paymentMethod]||sale.paymentMethod}</p></div><p className="text-3xl font-semibold tracking-tight text-ink">{formatCurrency(sale.totalAmount)}</p></div>
+        {admin&&!cancelled&&<div className="mt-7 border-t border-line pt-5 print:hidden"><h2 className="text-sm font-semibold text-ink">Administrative action</h2><p className="mt-1 text-sm leading-6 text-muted">Only cancel a sale when the transaction should be reversed. All quantities will be returned to stock.</p><Button variant="danger" className="mt-4" onClick={()=>setConfirm(true)}>Cancel sale and restore stock</Button></div>}
+        <Dialog open={confirm} title="Cancel this sale?" description="This will mark the receipt as cancelled, return every sold quantity to stock, and create audit movements. This action cannot be repeated." confirmLabel="Cancel sale" confirmVariant="danger" busy={cancelling} onConfirm={()=>void cancel()} onClose={()=>setConfirm(false)} />
+    </div>;
 }
-
-interface SaleDetail {
-    saleId: string;
-    saleDateTime: string;
-    cashierName: string;
-    paymentMethod: string;
-    status: string;
-    totalAmount: number;
-    items: SaleLineItem[];
-}
-
-const currency = new Intl.NumberFormat('en-ZA', {
-    style: 'currency',
-    currency: 'ZAR',
-    minimumFractionDigits: 2,
-});
-
-const PAYMENT_LABELS: Record<string, string> = {
-    CASH: 'Cash',
-    CARD: 'Card',
-    MOBILE: 'Mobile',
-    MOBILE_PAYMENT: 'Mobile Payment',
-};
-
-function formatSaleDateTime(iso: string): string {
-    const date = new Date(iso);
-    const datePart = date.toLocaleDateString('en-ZA', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    });
-    const timePart = date.toLocaleTimeString('en-ZA', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    });
-    return `${datePart}, ${timePart}`;
-}
-
-export default function SaleDetailPage() {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const { currentUser } = useAuth();
-    const isAdmin = currentUser?.role === 'ADMIN';
-
-    const [state, setState] = useState<LoadState>('loading');
-    const [sale, setSale] = useState<SaleDetail | null>(null);
-
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    const [isCancelling, setIsCancelling] = useState(false);
-    const [cancelError, setCancelError] = useState<string | null>(null);
-
-    const loadSale = async () => {
-        if (!id) return;
-        setState('loading');
-        try {
-            const { data } = await api.get<SaleDetail>(`/sales/${id}`);
-            setSale(data);
-            setState('success');
-        } catch {
-            setState('error');
-        }
-    };
-
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: loading state resets on every id change for the standard fetch-on-mount/param-change pattern
-        void loadSale();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id]);
-
-    const handleCancelSale = async () => {
-        if (!id) return;
-        setIsCancelling(true);
-        setCancelError(null);
-        try {
-            await api.patch(`/sales/${id}/cancel`);
-            setSale((prev: SaleDetail | null) => (prev ? { ...prev, status: 'CANCELLED' } : prev));
-            setIsConfirmOpen(false);
-        } catch {
-            setCancelError("Couldn't cancel this sale. Please try again.");
-        } finally {
-            setIsCancelling(false);
-        }
-    };
-
-    if (state === 'loading') {
-        return <SaleDetailSkeleton />;
-    }
-
-    if (state === 'error' || !sale) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-canvas">
-                <p className="text-gray-700 mb-4">Couldn't load this sale.</p>
-                <button onClick={() => void loadSale()} className="h-11 px-6 rounded-2xl bg-gray-900 text-white font-medium">
-                    Retry
-                </button>
-            </div>
-        );
-    }
-
-    const isCancelled = sale.status.toUpperCase() === 'CANCELLED';
-
-    return (
-        <div className="min-h-screen bg-canvas px-5 pt-6 pb-28">
-            {/* Back */}
-            <button onClick={() => navigate(-1)} className="flex items-center gap-0.5 text-sm text-gray-500 mb-5">
-                <ChevronLeft size={18} />
-                Back
-            </button>
-
-            <p className="text-xs text-gray-400 mb-1">Sale #{sale.saleId}</p>
-            <h1 className="text-lg font-bold text-gray-900 mb-5">{formatSaleDateTime(sale.saleDateTime)}</h1>
-
-            {/* Summary card — row style lifted from the receipt mockup */}
-            <div className="bg-white rounded-2xl shadow-sm mb-4 overflow-hidden">
-                <Row label="Cashier" value={sale.cashierName} />
-                <Row label="Payment Method" value={PAYMENT_LABELS[sale.paymentMethod.toUpperCase()] ?? sale.paymentMethod} />
-                <Row
-                    label="Status"
-                    value={
-                        <span
-                            className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                                isCancelled ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                            }`}
-                        >
-              {isCancelled ? 'Cancelled' : 'Completed'}
-            </span>
-                    }
-                    noBorder
-                />
-            </div>
-
-            {/* Line items */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                    <tr className="text-xs text-gray-400 text-left">
-                        <th className="font-medium pb-2">Product</th>
-                        <th className="font-medium pb-2 text-center w-10">Qty</th>
-                        <th className="font-medium pb-2 text-right w-20">Price</th>
-                        <th className="font-medium pb-2 text-right w-20">Subtotal</th>
-                    </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                    {sale.items.map((item: SaleLineItem) => (
-                        <tr key={item.productId}>
-                            <td className="py-2 text-gray-900">{item.productName}</td>
-                            <td className="py-2 text-center text-gray-600">{item.quantity}</td>
-                            <td className="py-2 text-right text-gray-600">{currency.format(item.unitPrice)}</td>
-                            <td className="py-2 text-right text-gray-900 font-medium">
-                                {currency.format(item.subtotal)}
-                            </td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Total — large, at bottom, per spec */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 flex items-center justify-between">
-                <span className="text-sm text-gray-500">Total Amount</span>
-                <span className="text-2xl font-bold text-gray-900">{currency.format(sale.totalAmount)}</span>
-            </div>
-
-            {/* Admin: cancel sale */}
-            {isAdmin && !isCancelled && (
-                <button
-                    onClick={() => {
-                        setCancelError(null);
-                        setIsConfirmOpen(true);
-                    }}
-                    className="w-full h-14 rounded-2xl bg-red-600 text-white font-semibold"
-                >
-                    Cancel Sale
-                </button>
-            )}
-
-            {/* Confirmation modal */}
-            {isConfirmOpen && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-                    <button
-                        aria-label="Dismiss"
-                        className="absolute inset-0 bg-black/40"
-                        onClick={() => !isCancelling && setIsConfirmOpen(false)}
-                    />
-                    <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
-                        <h2 className="text-base font-bold text-gray-900 mb-2">Cancel this sale?</h2>
-                        <p className="text-sm text-gray-500 mb-4">
-                            This will mark the sale as cancelled. Stock will not be restored automatically.
-                        </p>
-
-                        {cancelError && <p className="text-sm text-red-600 mb-3">{cancelError}</p>}
-
-                        <div className="space-y-2">
-                            <button
-                                onClick={() => void handleCancelSale()}
-                                disabled={isCancelling}
-                                className="w-full h-14 rounded-2xl bg-red-600 text-white font-semibold disabled:opacity-60"
-                            >
-                                {isCancelling ? 'Cancelling…' : 'Cancel Sale'}
-                            </button>
-                            <button
-                                onClick={() => setIsConfirmOpen(false)}
-                                disabled={isCancelling}
-                                className="w-full h-14 rounded-2xl bg-white border border-gray-200 text-gray-700 font-semibold disabled:opacity-60"
-                            >
-                                Keep Sale
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function Row({
-                 label,
-                 value,
-                 noBorder,
-             }: {
-    label: string;
-    value: ReactNode;
-    noBorder?: boolean;
-}) {
-    return (
-        <div className={`flex items-center justify-between px-4 py-3 ${noBorder ? '' : 'border-b border-gray-100'}`}>
-            <span className="text-sm text-gray-500">{label}</span>
-            <span className="text-sm font-semibold text-gray-900">{value}</span>
-        </div>
-    );
-}
-
-function SaleDetailSkeleton() {
-    return (
-        <div className="min-h-screen bg-canvas px-5 pt-6 pb-28 animate-pulse">
-            <div className="h-4 w-16 bg-gray-200 rounded mb-5" />
-            <div className="h-3 w-24 bg-gray-200 rounded mb-1" />
-            <div className="h-5 w-48 bg-gray-200 rounded mb-5" />
-            <div className="h-32 bg-gray-200 rounded-2xl mb-4" />
-            <div className="h-40 bg-gray-200 rounded-2xl mb-4" />
-            <div className="h-16 bg-gray-200 rounded-2xl" />
-        </div>
-    );
-}
+function Meta({label,value}:{label:string;value:React.ReactNode}){return <div className="flex min-h-16 items-center justify-between border-b border-line px-4 py-3 last:border-b-0 sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(n+3)]:border-b-0"><span className="text-sm text-muted">{label}</span><span className="text-sm font-semibold text-ink">{value}</span></div>}

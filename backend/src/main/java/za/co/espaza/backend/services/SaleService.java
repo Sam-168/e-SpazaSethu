@@ -109,23 +109,37 @@ public class SaleService {
     }
 
     @Transactional
-    public SaleResponse cancelSale(UUID id) {
-        Sale sale = saleRepository.findById(id)
+    public SaleResponse cancelSale(UUID id, UUID cancelledBy) {
+        Sale sale = saleRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntityNotFoundException("Sale not found: " + id));
 
         if (sale.getStatus() == SaleStatus.CANCELLED) {
             throw new BusinessRuleException("Sale is already cancelled");
         }
 
-        // TODO Phase 2: reverse stock on cancellation.
-        // The MVP does NOT restore deducted stock when a sale is cancelled -
-        // this is a known limitation.
-        sale.cancel();
-        saleRepository.save(sale);
+        Map<String, Product> restoredProducts = new LinkedHashMap<>();
+        for (SaleItem item : sale.getItems()) {
+            Product product = productRepository.findByIdForUpdate(item.getProductId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Product not found while cancelling sale: " + item.getProductId()));
+            product.addStock(item.getQuantity());
+            restoredProducts.put(product.getProductId(), product);
 
+            StockMovement movement = new StockMovement();
+            movement.setProductId(product.getProductId());
+            movement.setCreatedBy(cancelledBy.toString());
+            movement.setQuantityChange(item.getQuantity());
+            movement.setMovementType(MovementType.ADJUSTMENT);
+            movement.setReferenceId(sale.getSaleId().toString());
+            movement.setNotes("Stock restored for cancelled sale");
+            movementRepository.save(movement);
+        }
+
+        sale.cancel();
+        productRepository.saveAll(restoredProducts.values());
+        saleRepository.save(sale);
         return toResponse(sale);
     }
-
     private SaleResponse toResponse(Sale sale) {
         Map<String, String> productNames = productRepository.findAllById(
                         sale.getItems().stream().map(SaleItem::getProductId).toList())

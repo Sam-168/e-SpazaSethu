@@ -17,6 +17,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -136,6 +137,48 @@ class BackendApplicationTests {
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from stock_movement where product_id = ?", Integer.class, productId))
                 .isZero();
+    }
+    @Test
+    void adminCancellationRestoresStockOnceAndCreatesAnAuditMovement() throws Exception {
+        String adminUsername = "cancel-admin-" + UUID.randomUUID();
+        String adminId = UUID.randomUUID().toString();
+        jdbcTemplate.update("""
+                insert into user (user_id, username, password_hash, role, is_active, created_at)
+                values (?, ?, ?, 'ADMIN', true, current_timestamp)
+                """, adminId, adminUsername, passwordEncoder.encode("admin-password"));
+
+        var checkout = objectMapper.createObjectNode();
+        checkout.put("paymentMethod", "CASH");
+        checkout.putArray("items").addObject().put("productId", productId).put("quantity", 3);
+        String response = mockMvc.perform(post("/api/v1/sales")
+                        .header("Authorization", login(username, "checkout-password"))
+                        .contentType(MediaType.APPLICATION_JSON).content(checkout.toString()))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String saleId = objectMapper.readTree(response).get("saleId").asText();
+
+        mockMvc.perform(patch("/api/v1/sales/{id}/cancel", saleId)
+                        .header("Authorization", login(username, "checkout-password")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/v1/sales/{id}/cancel", saleId)
+                        .header("Authorization", login(adminUsername, "admin-password")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(10);
+        assertThat(jdbcTemplate.queryForObject("""
+                select quantity_change from stock_movement
+                where product_id = ? and reference_id = ? and quantity_change > 0
+                """, Integer.class, productId, saleId)).isEqualTo(3);
+        assertThat(jdbcTemplate.queryForObject("""
+                select created_by from stock_movement
+                where product_id = ? and reference_id = ? and quantity_change > 0
+                """, String.class, productId, saleId)).isEqualTo(adminId);
+
+        mockMvc.perform(patch("/api/v1/sales/{id}/cancel", saleId)
+                        .header("Authorization", login(adminUsername, "admin-password")))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(jdbcTemplate.queryForObject(
+                "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(10);
     }
     @Test
     void salesHistoryRejectsAnInvalidDateRange() throws Exception {
