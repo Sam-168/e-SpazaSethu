@@ -39,7 +39,7 @@ export interface Product {
 export interface Category {
     categoryId: string;
     name: string;
-    description: string;
+    description?: string | null;
 }
 
 // --- Cart (POS) ---

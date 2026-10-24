@@ -209,6 +209,45 @@ class BackendApplicationTests {
                 .andExpect(jsonPath("$.message").isNotEmpty());
     }
 
+    @Test
+    void adminCanManageCatalogueAndCashierCanSearchByBarcode() throws Exception {
+        String adminUsername = "catalogue-admin-" + UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into user (user_id, username, password_hash, role, is_active, created_at)
+                values (?, ?, ?, 'ADMIN', true, current_timestamp)
+                """, UUID.randomUUID().toString(), adminUsername, passwordEncoder.encode("admin-password"));
+        String adminToken = login(adminUsername, "admin-password");
+        String cashierToken = login(username, "checkout-password");
+
+        String categoryJson = mockMvc.perform(post("/api/v1/categories")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.createObjectNode().put("name", "Cold Drinks").toString()))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String categoryId = objectMapper.readTree(categoryJson).get("categoryId").asText();
+        String barcode = "600" + System.nanoTime();
+        var product = objectMapper.createObjectNode()
+                .put("name", "Ginger Drink").put("barcode", barcode)
+                .put("sellingPrice", 18.50).put("costPrice", 11.00)
+                .put("stockQuantity", 2).put("lowStockThreshold", 3)
+                .put("categoryId", categoryId);
+
+        mockMvc.perform(post("/api/v1/products").header("Authorization", cashierToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(product.toString()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/products").header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(product.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Ginger Drink"))
+                .andExpect(jsonPath("$.lowStock").value(true));
+        mockMvc.perform(get("/api/v1/products").param("search", barcode)
+                        .header("Authorization", cashierToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].barcode").value(barcode));
+        mockMvc.perform(post("/api/v1/products").header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\",\"sellingPrice\":0}"))
+                .andExpect(status().isBadRequest());
+    }
     private String login(String loginUsername, String password) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

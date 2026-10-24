@@ -1,22 +1,9 @@
 package za.co.espaza.backend.dto.request;
-
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 public class UpdateCategoryRequest {
-    private String name;
-    private String description;
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    @Pattern(regexp=".*\\S.*", message="Category name cannot be blank") @Size(max=100) private String name;
+    @Size(max=500) private String description;
+    public String getName(){return name;} public void setName(String value){name=value;}
+    public String getDescription(){return description;} public void setDescription(String value){description=value;}
 }

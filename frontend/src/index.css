@@ -3,17 +3,17 @@
 
 @theme {
     --font-sans: "Geist Variable", "Geist", Arial, sans-serif;
-    --color-brand-50: #eefbf8;
-    --color-brand-100: #d7f5ef;
-    --color-brand-200: #afeadd;
-    --color-brand-300: #73d8c7;
-    --color-brand-400: #36bdaa;
-    --color-brand-500: #149b8b;
-    --color-brand-600: #0d7f73;
-    --color-brand-700: #0f665e;
-    --color-brand-800: #11524d;
-    --color-brand-900: #10443f;
-    --color-brand-950: #062825;
+    --color-brand-50: #eef8fb;
+    --color-brand-100: #d7eef5;
+    --color-brand-200: #adddea;
+    --color-brand-300: #72c5d9;
+    --color-brand-400: #35a7c2;
+    --color-brand-500: #1385a3;
+    --color-brand-600: #006f8f;
+    --color-brand-700: #005f7b;
+    --color-brand-800: #064d63;
+    --color-brand-900: #083f51;
+    --color-brand-950: #032a37;
     --color-warning-50: #fff7ed;
     --color-warning-100: #ffedd5;
     --color-warning-500: #f26a2e;
@@ -62,7 +62,7 @@ button:not(:disabled),
 a[href] { cursor: pointer; }
 
 :focus-visible {
-    outline: 3px solid rgba(20, 155, 139, 0.35);
+    outline: 3px solid rgba(0, 95, 123, 0.32);
     outline-offset: 2px;
 }
 

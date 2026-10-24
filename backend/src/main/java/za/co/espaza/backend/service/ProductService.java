@@ -104,21 +104,9 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponse> searchProducts(String search, String categoryId) {
-        boolean hasSearch = search != null && !search.isBlank();
-        boolean hasCategory = categoryId != null && !categoryId.isBlank();
-
-        List<Product> products;
-        if (hasSearch && hasCategory) {
-            products = productRepository
-                    .findByIsActiveTrueAndNameContainingIgnoreCaseAndCategory_CategoryId(
-                            search.trim(), categoryId);
-        } else if (hasSearch) {
-            products = productRepository.findByIsActiveTrueAndNameContainingIgnoreCase(search.trim());
-        } else if (hasCategory) {
-            products = productRepository.findByIsActiveTrueAndCategory_CategoryId(categoryId);
-        } else {
-            products = productRepository.findByIsActiveTrue();
-        }
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        String normalizedCategory = categoryId == null || categoryId.isBlank() ? null : categoryId.trim();
+        List<Product> products = productRepository.searchActiveProducts(normalizedSearch, normalizedCategory);
         return products.stream().map(ProductResponse::from).toList();
     }
 
