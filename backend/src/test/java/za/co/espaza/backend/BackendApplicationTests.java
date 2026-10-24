@@ -244,6 +244,10 @@ class BackendApplicationTests {
                         .header("Authorization", cashierToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].barcode").value(barcode));
+        mockMvc.perform(get("/api/v1/products").param("search", barcode.substring(0, 6))
+                        .header("Authorization", cashierToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].barcode").value(barcode));
         mockMvc.perform(post("/api/v1/products").header("Authorization", adminToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\",\"sellingPrice\":0}"))
                 .andExpect(status().isBadRequest());
