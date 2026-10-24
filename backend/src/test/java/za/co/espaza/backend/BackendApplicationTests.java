@@ -118,6 +118,26 @@ class BackendApplicationTests {
     }
 
     @Test
+    void checkoutRejectsInsufficientStockWithoutChangingInventory() throws Exception {
+        var checkout = objectMapper.createObjectNode();
+        checkout.put("paymentMethod", "CARD");
+        checkout.putArray("items").addObject().put("productId", productId).put("quantity", 11);
+
+        mockMvc.perform(post("/api/v1/sales")
+                        .header("Authorization", login(username, "checkout-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(checkout.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Insufficient stock")));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select stock_quantity from product where product_id = ?", Integer.class, productId))
+                .isEqualTo(10);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from stock_movement where product_id = ?", Integer.class, productId))
+                .isZero();
+    }
+    @Test
     void registrationIsPrivateAndAdminCanCreateAWorkingCashierAccount() throws Exception {
         mockMvc.perform(get("/api/v1/auth/setup-status"))
                 .andExpect(status().isOk())
