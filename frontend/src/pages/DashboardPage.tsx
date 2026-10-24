@@ -1,62 +1,73 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, PackagePlus, ShoppingCart } from 'lucide-react';
+import {
+    ArrowRight,
+    CheckCircle2,
+    ClipboardList,
+    PackagePlus,
+    RefreshCw,
+    ShoppingCart,
+    TriangleAlert,
+} from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { DashboardData, SaleSummary } from '../types';
+import type { DashboardData, Product, SaleSummary } from '../types';
+import { Button } from '../components/ui/Button';
+import { formatCurrency } from '../utils/format';
 
 type LoadState = 'loading' | 'success' | 'error';
 
-// Defined locally rather than imported from '../types': not exported
-// there yet, and the exact field names from GET /products/low-stock
-// haven't been confirmed against the real backend response. Swap this
-// for the shared type once that's settled.
-interface LowStockProduct {
-    productId: string;
-    name: string;
-    stockQuantity: number;
-    lowStockThreshold: number;
+function toLocalDateString(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
-const currency = new Intl.NumberFormat('en-ZA', {
-    style: 'currency',
-    currency: 'ZAR',
-    minimumFractionDigits: 2,
-});
-
-function getGreeting() {
+function getGreeting(): string {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
 }
 
-const todayLabel = new Date().toLocaleDateString('en-ZA', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-});
+function getTodayLabel(): string {
+    return new Date().toLocaleDateString('en-ZA', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+    });
+}
+
+function formatSaleTime(value: string): string {
+    return new Date(value).toLocaleTimeString('en-ZA', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+}
 
 export default function DashboardPage() {
     const { currentUser } = useAuth();
-
     const [state, setState] = useState<LoadState>('loading');
     const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-    const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
+    const [lowStock, setLowStock] = useState<Product[]>([]);
     const [recentSales, setRecentSales] = useState<SaleSummary[]>([]);
+    const isAdmin = currentUser?.role === 'ADMIN';
 
     const loadDashboard = useCallback(async () => {
         setState('loading');
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const [dashboardRes, lowStockRes, salesRes] = await Promise.all([
+            const today = toLocalDateString(new Date());
+            const [dashboardResponse, lowStockResponse, salesResponse] = await Promise.all([
                 api.get<DashboardData>('/reports/dashboard'),
-                api.get<LowStockProduct[]>('/products/low-stock'),
+                api.get<Product[]>('/products/low-stock'),
                 api.get<SaleSummary[]>('/sales', { params: { from: today, to: today } }),
             ]);
-            setDashboard(dashboardRes.data);
-            setLowStock(lowStockRes.data);
-            setRecentSales(salesRes.data.slice(0, 5));
+
+            setDashboard(dashboardResponse.data);
+            setLowStock(lowStockResponse.data);
+            setRecentSales(salesResponse.data.slice(0, 5));
             setState('success');
         } catch {
             setState('error');
@@ -64,168 +75,219 @@ export default function DashboardPage() {
     }, []);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: resets to 'loading' on every mount/refetch
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch owns the loading state
         void loadDashboard();
     }, [loadDashboard]);
 
-    if (state === 'loading') {
-        return <DashboardSkeleton />;
-    }
+    const transactionLabel = useMemo(() => {
+        const count = dashboard?.transactionCount ?? 0;
+        return `${count} transaction${count === 1 ? '' : 's'} today`;
+    }, [dashboard?.transactionCount]);
+
+    if (state === 'loading') return <DashboardSkeleton />;
 
     if (state === 'error') {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-[#F7F5F0]">
-                <p className="text-gray-700 mb-4">
-                    Couldn't load the dashboard. Check your connection and try again.
-                </p>
-                <button
-                    onClick={() => void loadDashboard()}
-                    className="h-11 px-6 rounded-xl bg-gray-900 text-white font-medium"
-                >
-                    Retry
-                </button>
-            </div>
+            <main className="app-page flex min-h-[70vh] items-center justify-center">
+                <section className="w-full max-w-md border-y border-line py-10 text-center">
+                    <p className="text-lg font-semibold text-ink">The dashboard could not be loaded</p>
+                    <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">
+                        Check that the backend is running, then try again.
+                    </p>
+                    <Button
+                        className="mt-6"
+                        leadingIcon={<RefreshCw aria-hidden="true" className="h-4 w-4" />}
+                        onClick={() => void loadDashboard()}
+                    >
+                        Try again
+                    </Button>
+                </section>
+            </main>
         );
     }
 
-    const transactionCount = dashboard?.transactionCount ?? 0;
-    const hasProfit = dashboard?.totalProfit != null;
-
     return (
-        <div className="min-h-screen bg-[#F7F5F0] px-4 pt-6 pb-28">
-            {/* Greeting header */}
-            <div className="mb-5">
-                <h1 className="text-xl font-semibold text-gray-900">
-                    {getGreeting()}, {currentUser?.username ?? 'there'}
-                </h1>
-                <p className="text-sm text-gray-500">{todayLabel}</p>
-            </div>
-
-            {/* Key metrics */}
-            <div className="grid grid-cols-2 gap-3 mb-2">
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                    <p className="text-xs text-gray-500 mb-1">Today's Sales</p>
-                    <p className="text-2xl font-bold text-gray-900 leading-tight">
-                        {currency.format(dashboard?.totalSales ?? 0)}
-                    </p>
+        <main className="app-page">
+            <header className="mb-7 flex items-start justify-between gap-4 sm:mb-9">
+                <div className="min-w-0">
+                    <p className="text-sm font-semibold text-brand-700">{getTodayLabel()}</p>
+                    <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                        {getGreeting()}, {currentUser?.username ?? 'there'}
+                    </h1>
+                    <p className="mt-1 text-sm text-muted">Here is how your shop is doing today.</p>
                 </div>
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                    <p className="text-xs text-gray-500 mb-1">Today's Profit</p>
-                    <p className="text-2xl font-bold text-gray-900 leading-tight">
-                        {hasProfit ? currency.format(dashboard!.totalProfit) : '—'}
-                    </p>
-                </div>
-            </div>
-            <p className="text-sm text-gray-500 mb-6">
-                {transactionCount} transaction{transactionCount === 1 ? '' : 's'} today
-            </p>
+                <span className="hidden shrink-0 border border-line px-3 py-1.5 text-xs font-semibold text-muted sm:inline-flex">
+                    {isAdmin ? 'Owner view' : 'Cashier view'}
+                </span>
+            </header>
 
-            {/* Low-stock alert panel */}
-            <div className="mb-6">
-                {lowStock.length > 0 ? (
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-                        <p className="text-sm font-semibold text-red-700 mb-2">
-                            {lowStock.length} product{lowStock.length === 1 ? '' : 's'} running low
-                        </p>
-                        <ul className="divide-y divide-red-100">
-                            {lowStock.map((product) => (
-                                <li key={product.productId}>
+            <section aria-label="Today's performance" className="mb-8 grid grid-cols-2 border-y border-line sm:mb-10">
+                <div className="border-r border-line py-5 pr-4 sm:py-6 sm:pr-8">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Sales</p>
+                    <p className="mt-2 break-words text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
+                        {formatCurrency(dashboard?.totalSales)}
+                    </p>
+                    <p className="mt-2 text-xs text-muted sm:text-sm">{transactionLabel}</p>
+                </div>
+                <div className="py-5 pl-4 sm:py-6 sm:pl-8">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Profit</p>
+                    <p className="mt-2 break-words text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
+                        {formatCurrency(dashboard?.totalProfit)}
+                    </p>
+                    <p className="mt-2 text-xs text-muted sm:text-sm">Estimated today</p>
+                </div>
+            </section>
+
+            <section aria-labelledby="quick-actions-title" className="mb-9">
+                <div className="mb-3 flex items-center justify-between">
+                    <h2 id="quick-actions-title" className="text-sm font-semibold uppercase tracking-[0.12em] text-muted">Quick actions</h2>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                    <Link
+                        to="/pos"
+                        className="flex min-h-16 items-center justify-between bg-brand-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-800 sm:min-h-20"
+                    >
+                        <span className="flex items-center gap-3">
+                            <ShoppingCart aria-hidden="true" className="h-5 w-5" />
+                            New sale
+                        </span>
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    </Link>
+                    <Link
+                        to={isAdmin ? '/products/new' : '/products'}
+                        className="flex min-h-14 items-center justify-between border border-line bg-white px-4 text-sm font-semibold text-ink transition-colors hover:border-brand-500 hover:text-brand-800 sm:min-h-20"
+                    >
+                        <span className="flex items-center gap-3">
+                            <PackagePlus aria-hidden="true" className="h-5 w-5 text-brand-700" />
+                            {isAdmin ? 'Add product' : 'View products'}
+                        </span>
+                        <ArrowRight aria-hidden="true" className="h-4 w-4 text-muted" />
+                    </Link>
+                    <Link
+                        to={isAdmin ? '/stocktake' : '/sales'}
+                        className="flex min-h-14 items-center justify-between border border-line bg-white px-4 text-sm font-semibold text-ink transition-colors hover:border-brand-500 hover:text-brand-800 sm:min-h-20"
+                    >
+                        <span className="flex items-center gap-3">
+                            <ClipboardList aria-hidden="true" className="h-5 w-5 text-brand-700" />
+                            {isAdmin ? 'Start stocktake' : 'Sales history'}
+                        </span>
+                        <ArrowRight aria-hidden="true" className="h-4 w-4 text-muted" />
+                    </Link>
+                </div>
+            </section>
+
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(17rem,0.75fr)] lg:gap-12">
+                <section aria-labelledby="recent-sales-title">
+                    <div className="flex min-h-11 items-center justify-between border-b border-line">
+                        <h2 id="recent-sales-title" className="text-lg font-semibold text-ink">Recent sales</h2>
+                        <Link to="/sales" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-800">
+                            View all <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        </Link>
+                    </div>
+
+                    {recentSales.length === 0 ? (
+                        <div className="border-b border-line py-8">
+                            <p className="font-medium text-ink">No sales yet today</p>
+                            <p className="mt-1 text-sm text-muted">Completed sales will appear here.</p>
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-line border-b border-line">
+                            {recentSales.map((sale) => (
+                                <li key={sale.saleId}>
                                     <Link
-                                        to={`/products/${product.productId}/edit`}
-                                        className="flex items-center justify-between py-2 text-sm text-red-800"
+                                        to={`/sales/${sale.saleId}`}
+                                        className="grid min-h-16 grid-cols-[1fr_auto] items-center gap-4 py-3 text-sm hover:text-brand-800"
                                     >
-                                        <span>{product.name}</span>
-                                        <span className="font-medium">{product.stockQuantity} left</span>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-ink">Sale at {formatSaleTime(sale.saleDateTime)}</p>
+                                            <p className="mt-0.5 truncate text-xs capitalize text-muted">
+                                                {sale.paymentMethod.toLowerCase().replace('_', ' ')} · {sale.status.toLowerCase()}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-ink">{formatCurrency(sale.totalAmount)}</span>
+                                            <ArrowRight aria-hidden="true" className="h-4 w-4 text-muted" />
+                                        </div>
                                     </Link>
                                 </li>
                             ))}
                         </ul>
-                    </div>
-                ) : (
-                    <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
-                        <p className="text-sm text-green-700">All stock levels are healthy.</p>
-                    </div>
-                )}
-            </div>
+                    )}
+                </section>
 
-            {/* Quick actions */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-                <Link
-                    to="/pos"
-                    className="flex flex-col items-center justify-center h-20 rounded-2xl bg-gray-900 text-white text-xs font-medium gap-1 text-center px-1"
-                >
-                    <ShoppingCart size={20} />
-                    New Sale
-                </Link>
-                <Link
-                    to="/products/new"
-                    className="flex flex-col items-center justify-center h-20 rounded-2xl bg-white border border-gray-200 text-gray-700 text-xs font-medium gap-1 text-center px-1"
-                >
-                    <PackagePlus size={20} />
-                    Add Product
-                </Link>
-                <Link
-                    to="/stocktake"
-                    className="flex flex-col items-center justify-center h-20 rounded-2xl bg-white border border-gray-200 text-gray-700 text-xs font-medium gap-1 text-center px-1"
-                >
-                    <ClipboardList size={20} />
-                    Start Stocktake
-                </Link>
-            </div>
-
-            {/* Recent sales */}
-            <div>
-                <h2 className="text-sm font-semibold text-gray-900 mb-2">Recent Sales</h2>
-                {recentSales.length === 0 ? (
-                    <div className="bg-white rounded-2xl p-4">
-                        <p className="text-sm text-gray-500">No sales recorded today yet.</p>
+                <section aria-labelledby="stock-health-title">
+                    <div className="flex min-h-11 items-center justify-between border-b border-line">
+                        <h2 id="stock-health-title" className="text-lg font-semibold text-ink">Stock health</h2>
+                        <Link to="/products" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-700 hover:text-brand-800">
+                            Products
+                        </Link>
                     </div>
-                ) : (
-                    <ul className="bg-white rounded-2xl divide-y divide-gray-100 overflow-hidden">
-                        {recentSales.map((sale) => (
-                            <li key={sale.saleId}>
-                                <Link to={`/sales/${sale.saleId}`} className="flex items-center justify-between px-4 py-3">
-                                    <div>
-                                        <p className="text-sm text-gray-900">
-                                            {new Date(sale.saleDateTime).toLocaleTimeString('en-ZA', {
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                            })}
-                                        </p>
-                                        <p className="text-xs text-gray-500 capitalize">
-                                            {sale.paymentMethod.toLowerCase()}
-                                        </p>
-                                    </div>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                        {currency.format(sale.totalAmount)}
-                                    </p>
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+
+                    {lowStock.length === 0 ? (
+                        <div className="flex gap-3 border-b border-line py-5">
+                            <CheckCircle2 aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
+                            <div>
+                                <p className="font-semibold text-ink">Stock levels look healthy</p>
+                                <p className="mt-1 text-sm leading-6 text-muted">No products are below their alert level.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="border-b border-line">
+                            <div className="flex gap-3 border-l-4 border-warning-500 px-4 py-4">
+                                <TriangleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-warning-700" />
+                                <p className="text-sm font-semibold text-ink">
+                                    {lowStock.length} product{lowStock.length === 1 ? '' : 's'} need attention
+                                </p>
+                            </div>
+                            <ul className="divide-y divide-line">
+                                {lowStock.slice(0, 4).map((product) => (
+                                    <li key={product.productId}>
+                                        <Link
+                                            to={isAdmin ? `/products/${product.productId}/edit` : '/products'}
+                                            className="flex min-h-14 items-center justify-between gap-4 px-4 text-sm hover:text-brand-800"
+                                        >
+                                            <span className="min-w-0 truncate font-medium text-ink">{product.name}</span>
+                                            <span className="shrink-0 text-warning-700">{product.stockQuantity} left</span>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </section>
             </div>
-        </div>
+        </main>
     );
 }
 
 function DashboardSkeleton() {
     return (
-        <div className="min-h-screen bg-[#F7F5F0] px-4 pt-6 pb-28 animate-pulse">
-            <div className="h-5 w-40 bg-gray-200 rounded mb-2" />
-            <div className="h-3 w-28 bg-gray-200 rounded mb-6" />
-            <div className="grid grid-cols-2 gap-3 mb-2">
-                <div className="h-20 bg-gray-200 rounded-2xl" />
-                <div className="h-20 bg-gray-200 rounded-2xl" />
+        <main className="app-page animate-pulse" aria-label="Loading dashboard">
+            <div className="mb-8">
+                <div className="h-3.5 w-32 bg-gray-200" />
+                <div className="mt-3 h-8 w-64 max-w-full bg-gray-200" />
+                <div className="mt-2 h-3.5 w-52 max-w-full bg-gray-100" />
             </div>
-            <div className="h-3 w-24 bg-gray-200 rounded mb-6" />
-            <div className="h-16 bg-gray-200 rounded-2xl mb-6" />
-            <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="h-20 bg-gray-200 rounded-2xl" />
-                <div className="h-20 bg-gray-200 rounded-2xl" />
-                <div className="h-20 bg-gray-200 rounded-2xl" />
+            <div className="mb-9 grid grid-cols-2 border-y border-line">
+                <div className="border-r border-line py-6 pr-5">
+                    <div className="h-3 w-16 bg-gray-200" />
+                    <div className="mt-3 h-8 w-32 max-w-full bg-gray-200" />
+                </div>
+                <div className="py-6 pl-5">
+                    <div className="h-3 w-16 bg-gray-200" />
+                    <div className="mt-3 h-8 w-32 max-w-full bg-gray-200" />
+                </div>
             </div>
-            <div className="h-40 bg-gray-200 rounded-2xl" />
-        </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+                <div className="h-16 bg-brand-100 sm:h-20" />
+                <div className="h-16 border border-line bg-white sm:h-20" />
+                <div className="h-16 border border-line bg-white sm:h-20" />
+            </div>
+            <div className="mt-10 grid gap-10 lg:grid-cols-2">
+                <div className="h-48 border-y border-line bg-white" />
+                <div className="h-40 border-y border-line bg-white" />
+            </div>
+            <span className="sr-only">Loading dashboard</span>
+        </main>
     );
 }

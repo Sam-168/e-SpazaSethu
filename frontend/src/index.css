@@ -20,14 +20,14 @@
     --color-warning-700: #c2410c;
     --color-ink: #111827;
     --color-muted: #667085;
-    --color-canvas: #f7f9f8;
+    --color-canvas: #fcfdfc;
     --color-line: #d9e0de;
 }
 
 :root {
     font-family: "Geist Variable", "Geist", Arial, sans-serif;
     color: #111827;
-    background: #f7f9f8;
+    background: #fcfdfc;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -42,7 +42,7 @@ body,
     min-width: 320px;
     min-height: 100%;
     margin: 0;
-    background: #f7f9f8;
+    background: #fcfdfc;
 }
 
 body {
@@ -69,7 +69,7 @@ a[href] { cursor: pointer; }
 @layer components {
     .app-page {
         width: 100%;
-        max-width: 48rem;
+        max-width: 64rem;
         margin-inline: auto;
         padding: 1.25rem 1rem 7rem;
     }

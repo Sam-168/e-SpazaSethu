@@ -110,7 +110,7 @@ export default function SaleDetailPage() {
 
     if (state === 'error' || !sale) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-[#F7F5F0]">
+            <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-canvas">
                 <p className="text-gray-700 mb-4">Couldn't load this sale.</p>
                 <button onClick={() => void loadSale()} className="h-11 px-6 rounded-2xl bg-gray-900 text-white font-medium">
                     Retry
@@ -122,7 +122,7 @@ export default function SaleDetailPage() {
     const isCancelled = sale.status.toUpperCase() === 'CANCELLED';
 
     return (
-        <div className="min-h-screen bg-[#F7F5F0] px-5 pt-6 pb-28">
+        <div className="min-h-screen bg-canvas px-5 pt-6 pb-28">
             {/* Back */}
             <button onClick={() => navigate(-1)} className="flex items-center gap-0.5 text-sm text-gray-500 mb-5">
                 <ChevronLeft size={18} />
@@ -254,7 +254,7 @@ function Row({
 
 function SaleDetailSkeleton() {
     return (
-        <div className="min-h-screen bg-[#F7F5F0] px-5 pt-6 pb-28 animate-pulse">
+        <div className="min-h-screen bg-canvas px-5 pt-6 pb-28 animate-pulse">
             <div className="h-4 w-16 bg-gray-200 rounded mb-5" />
             <div className="h-3 w-24 bg-gray-200 rounded mb-1" />
             <div className="h-5 w-48 bg-gray-200 rounded mb-5" />
