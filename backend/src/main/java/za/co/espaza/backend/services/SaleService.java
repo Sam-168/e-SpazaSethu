@@ -96,6 +96,9 @@ public class SaleService {
 
     @Transactional(readOnly = true)
     public List<SaleResponse> getSales(LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw new BusinessRuleException("'from' date cannot be after 'to' date");
+        }
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.atTime(LocalTime.MAX);
 

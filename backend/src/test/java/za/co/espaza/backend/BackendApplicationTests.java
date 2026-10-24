@@ -138,6 +138,15 @@ class BackendApplicationTests {
                 .isZero();
     }
     @Test
+    void salesHistoryRejectsAnInvalidDateRange() throws Exception {
+        mockMvc.perform(get("/api/v1/sales")
+                        .param("from", "2026-10-24")
+                        .param("to", "2026-10-01")
+                        .header("Authorization", login(username, "checkout-password")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value("'from' date cannot be after 'to' date"));
+    }
+    @Test
     void registrationIsPrivateAndAdminCanCreateAWorkingCashierAccount() throws Exception {
         mockMvc.perform(get("/api/v1/auth/setup-status"))
                 .andExpect(status().isOk())
