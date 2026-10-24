@@ -1,152 +1,151 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, User, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, LockKeyhole, Store, UserRound } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { User as UserType } from '../types';
-import axios from 'axios';
-
-interface LoginResponse {
-    token: string;
-    user: UserType;
-}
-
-type LoginError = { message: string } | null;
+import type { LoginResponse } from '../types';
+import { Button } from '../components/ui/Button';
+import { TextField } from '../components/ui/TextField';
+import { getApiErrorMessage } from '../utils/api-error';
 
 interface LocationState {
     from?: { pathname: string };
+    message?: string;
 }
 
 export default function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { token, login } = useAuth();
-
-    // Where ProtectedRoute/AdminRoute sent the user from, so a successful
-    // login lands them back where they were headed instead of always '/'.
-    const from = (location.state as LocationState)?.from?.pathname ?? '/';
+    const { token, currentUser, login } = useAuth();
+    const state = location.state as LocationState | null;
+    const from = state?.from?.pathname ?? '/';
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<LoginError>(null);
+    const [setupRequired, setSetupRequired] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Already-logged-in users never see this form.
-    if (token) {
-        return <Navigate to={from} replace />;
-    }
+    useEffect(() => {
+        api.get<{ setupRequired: boolean }>('/auth/setup-status')
+            .then(({ data }) => setSetupRequired(data.setupRequired))
+            .catch(() => setSetupRequired(false));
+    }, []);
 
-    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    if (token && currentUser) return <Navigate to={from} replace />;
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         if (isSubmitting) return;
+
+        if (!username.trim() || !password) {
+            setError('Enter your username and password.');
+            return;
+        }
 
         setError(null);
         setIsSubmitting(true);
 
         try {
             const { data } = await api.post<LoginResponse>('/auth/login', {
-                username,
+                username: username.trim(),
                 password,
             });
             login(data.token, data.user);
             navigate(from, { replace: true });
-        } catch (err: unknown) {
-            if (axios.isAxiosError(err) && err.response?.status === 401) {
-                setError({ message: 'Incorrect username or password. Please try again.' });
-            } else if (axios.isAxiosError(err) && !err.response) {
-                setError({ message: 'Could not connect to the server. Please check your connection.' });
-            } else {
-                setError({ message: 'Something went wrong. Please try again.' });
-            }
+        } catch (requestError) {
+            setError(getApiErrorMessage(requestError, 'Incorrect username or password.'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[#F7F5F0] px-6">
-            <div className="w-full max-w-sm">
-                {/* Logo + heading */}
-                <div className="flex flex-col items-center mb-10">
-                    <div className="w-16 h-16 rounded-[22px] bg-gray-900 flex items-center justify-center mb-4">
-                        <ShoppingBag size={28} className="text-white" strokeWidth={1.8} />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900">e-SpazaSethu</h1>
-                    <p className="text-sm text-gray-500 mt-1">Sign in to your store</p>
+        <main className="grid min-h-screen bg-canvas lg:grid-cols-[minmax(0,1fr)_minmax(30rem,0.82fr)]">
+            <section className="hidden border-r border-brand-800 bg-brand-700 px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between">
+                <div className="flex items-center gap-3 text-lg font-semibold">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-brand-700">
+                        <Store aria-hidden="true" className="h-6 w-6" />
+                    </span>
+                    e-SpazaSethu
                 </div>
+                <div className="max-w-xl pb-14">
+                    <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-brand-100">Your shop, clearly managed</p>
+                    <h1 className="text-5xl font-semibold leading-[1.08] tracking-tight">Sales and stock without the paperwork.</h1>
+                    <p className="mt-6 max-w-lg text-lg leading-8 text-brand-50">A straightforward workspace built for the pace of a neighbourhood spaza shop.</p>
+                </div>
+                <p className="text-sm text-brand-100">Secure access for owners and cashiers</p>
+            </section>
 
-                <form onSubmit={handleSubmit} noValidate className="space-y-3">
-                    {/* Username */}
-                    <div className="relative">
-                        <User
-                            size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                            strokeWidth={1.8}
-                        />
-                        <input
+            <section className="flex items-center justify-center px-5 py-10 sm:px-10">
+                <div className="w-full max-w-md">
+                    <div className="mb-10 flex items-center gap-3 lg:hidden">
+                        <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-700 text-white">
+                            <Store aria-hidden="true" className="h-6 w-6" />
+                        </span>
+                        <span className="text-lg font-semibold text-ink">e-SpazaSethu</span>
+                    </div>
+
+                    <div className="mb-8">
+                        <p className="text-sm font-semibold text-brand-700">Welcome back</p>
+                        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Sign in to your store</h2>
+                        <p className="mt-2 text-base text-muted">Use the account provided by your store administrator.</p>
+                    </div>
+
+                    {state?.message && (
+                        <div role="status" className="mb-5 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
+                            {state.message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                        <TextField
                             id="username"
-                            name="username"
+                            label="Username"
                             type="text"
                             autoComplete="username"
-                            aria-label="Username"
-                            required
                             value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            onChange={(event) => setUsername(event.target.value)}
                             disabled={isSubmitting}
-                            className="w-full h-14 pl-12 pr-4 rounded-2xl bg-white border border-gray-200 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
-                            placeholder="Username"
+                            leadingIcon={<UserRound aria-hidden="true" className="h-5 w-5" />}
                         />
-                    </div>
-
-                    {/* Password */}
-                    <div className="relative">
-                        <Lock
-                            size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                            strokeWidth={1.8}
-                        />
-                        <input
+                        <TextField
                             id="password"
-                            name="password"
+                            label="Password"
                             type={showPassword ? 'text' : 'password'}
                             autoComplete="current-password"
-                            aria-label="Password"
-                            required
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(event) => setPassword(event.target.value)}
                             disabled={isSubmitting}
-                            className="w-full h-14 pl-12 pr-12 rounded-2xl bg-white border border-gray-200 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
-                            placeholder="Password"
+                            leadingIcon={<LockKeyhole aria-hidden="true" className="h-5 w-5" />}
+                            trailingAction={(
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((visible) => !visible)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    className="grid h-11 w-11 place-items-center rounded-lg text-muted hover:text-ink"
+                                >
+                                    {showPassword ? <EyeOff aria-hidden="true" className="h-5 w-5" /> : <Eye aria-hidden="true" className="h-5 w-5" />}
+                                </button>
+                            )}
                         />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword((v) => !v)}
-                            aria-label={showPassword ? 'Hide password' : 'Show password'}
-                            className="absolute inset-y-0 right-0 w-12 flex items-center justify-center text-gray-400 active:text-gray-600"
-                        >
-                            {showPassword ? <EyeOff size={18} strokeWidth={1.8} /> : <Eye size={18} strokeWidth={1.8} />}
-                        </button>
-                    </div>
 
-                    {/* Submit */}
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full h-14 rounded-2xl bg-gray-900 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors active:bg-black disabled:opacity-60 mt-5"
-                    >
-                        {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                        {isSubmitting ? 'Logging in…' : 'Log In'}
-                    </button>
+                        {error && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
-                    {error && (
-                        <p role="alert" className="text-sm text-red-600 text-center pt-1">
-                            {error.message}
+                        <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
+                            {isSubmitting ? 'Signing in' : 'Sign in'}
+                        </Button>
+                    </form>
+
+                    {setupRequired && (
+                        <p className="mt-8 border-t border-line pt-6 text-center text-sm text-muted">
+                            Setting up a new store?{' '}
+                            <Link to="/setup-owner" className="font-semibold text-brand-700 hover:text-brand-800">Create the owner account</Link>
                         </p>
                     )}
-                </form>
-            </div>
-        </div>
+                </div>
+            </section>
+        </main>
     );
 }

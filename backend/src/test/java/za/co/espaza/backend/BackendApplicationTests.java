@@ -117,4 +117,109 @@ class BackendApplicationTests {
                 .andExpect(jsonPath("$.transactionCount").value(1));
     }
 
+    @Test
+    void registrationIsPrivateAndAdminCanCreateAWorkingCashierAccount() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/setup-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.setupRequired").value(false));
+
+        mockMvc.perform(post("/api/v1/auth/setup-owner")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.createObjectNode()
+                                .put("username", "public-admin")
+                                .put("password", "not-allowed")
+                                .toString()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Owner setup is already complete"));
+
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.createObjectNode()
+                                .put("username", "anonymous-user")
+                                .put("password", "Password123")
+                                .put("role", "CASHIER")
+                                .toString()))
+                .andExpect(status().isUnauthorized());
+
+        String adminUsername = "admin-" + UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into user
+                    (user_id, username, password_hash, role, is_active, created_at)
+                values (?, ?, ?, 'ADMIN', true, current_timestamp)
+                """, UUID.randomUUID().toString(), adminUsername, passwordEncoder.encode("admin-password"));
+
+        String adminToken = login(adminUsername, "admin-password");
+        String cashierToken = login(username, "checkout-password");
+        String newUsername = "new-cashier-" + UUID.randomUUID();
+        String createUserBody = objectMapper.createObjectNode()
+                .put("username", newUsername)
+                .put("password", "Cashier@123")
+                .put("role", "CASHIER")
+                .toString();
+
+        mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", cashierToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createUserBody))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createUserBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value(newUsername))
+                .andExpect(jsonPath("$.role").value("CASHIER"))
+                .andExpect(jsonPath("$.isActive").value(true))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist());
+
+        login(newUsername, "Cashier@123");
+
+        mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createUserBody))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void loginAndAccountCreationValidateInput() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").isNotEmpty());
+
+        String adminUsername = "validation-admin-" + UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into user
+                    (user_id, username, password_hash, role, is_active, created_at)
+                values (?, ?, ?, 'ADMIN', true, current_timestamp)
+                """, UUID.randomUUID().toString(), adminUsername, passwordEncoder.encode("admin-password"));
+
+        mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", login(adminUsername, "admin-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.createObjectNode()
+                                .put("username", "x")
+                                .put("password", "short")
+                                .put("role", "CASHIER")
+                                .toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    private String login(String loginUsername, String password) throws Exception {
+        String response = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.createObjectNode()
+                                .put("username", loginUsername)
+                                .put("password", password)
+                                .toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        return "Bearer " + objectMapper.readTree(response).get("token").asText();
+    }
+
 }

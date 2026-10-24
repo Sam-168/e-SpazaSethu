@@ -43,6 +43,24 @@ public class UserService {
         return toResponse(savedUser);
     }
 
+    @Transactional
+    public synchronized UserResponse createInitialOwner(String username, String password) {
+        if (userRepository.count() > 0) {
+            throw new DuplicateResourceException("Owner setup is already complete");
+        }
+
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername(username);
+        request.setPassword(password);
+        request.setRole(Role.ADMIN);
+        return createUser(request);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isInitialSetupRequired() {
+        return userRepository.count() == 0;
+    }
+
     public UserResponse updateUser(String userId, UpdateUserRequest request) {
 
         User user = findUser(userId);
