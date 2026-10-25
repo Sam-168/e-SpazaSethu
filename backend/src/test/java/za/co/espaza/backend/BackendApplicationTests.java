@@ -181,6 +181,48 @@ class BackendApplicationTests {
                 "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(10);
     }
     @Test
+    void adminCanAdjustStockAndCashierCannotAccessTheAuditTrail() throws Exception {
+        String adminUsername = "stock-admin-" + UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into user (user_id, username, password_hash, role, is_active, created_at)
+                values (?, ?, ?, 'ADMIN', true, current_timestamp)
+                """, UUID.randomUUID().toString(), adminUsername, passwordEncoder.encode("admin-password"));
+        String adminToken = login(adminUsername, "admin-password");
+        String cashierToken = login(username, "checkout-password");
+        var adjustment = objectMapper.createObjectNode()
+                .put("productId", productId).put("quantityChange", 5).put("notes", "Delivery received");
+
+        mockMvc.perform(get("/api/v1/movements").header("Authorization", cashierToken))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/movements/adjustment")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(adjustment.toString()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.productName").value("Test Bread"))
+                .andExpect(jsonPath("$.username").value(adminUsername))
+                .andExpect(jsonPath("$.quantityChange").value(5));
+        assertThat(jdbcTemplate.queryForObject(
+                "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(15);
+
+        adjustment.put("quantityChange", -20);
+        mockMvc.perform(post("/api/v1/movements/adjustment")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(adjustment.toString()))
+                .andExpect(status().isUnprocessableEntity());
+        adjustment.put("quantityChange", 0);
+        mockMvc.perform(post("/api/v1/movements/adjustment")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(adjustment.toString()))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(jdbcTemplate.queryForObject(
+                "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(15);
+
+        mockMvc.perform(get("/api/v1/movements")
+                        .param("productId", productId).param("type", "ADJUSTMENT")
+                        .header("Authorization", adminToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].notes").value("Delivery received"));
+    }
+    @Test
     void salesHistoryRejectsAnInvalidDateRange() throws Exception {
         mockMvc.perform(get("/api/v1/sales")
                         .param("from", "2026-10-24")

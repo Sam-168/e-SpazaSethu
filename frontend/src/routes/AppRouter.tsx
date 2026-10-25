@@ -3,7 +3,7 @@ import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 import AppShell from '../components/layout/AppShell';
 import PlaceholderPage from '../components/layout/PlaceholderPage';
-import { BarChart3, ClipboardCheck, Settings, SlidersHorizontal } from 'lucide-react';
+import { BarChart3, ClipboardCheck, Settings } from 'lucide-react';
 
 import LoginPage from '../pages/LoginPage';
 import SetupOwnerPage from '../pages/SetupOwnerPage';
@@ -15,6 +15,7 @@ import ProductsPage from '../pages/ProductsPage';
 import ProductFormPage from '../pages/ProductFormPage';
 import CategoryManagementPage from '../pages/CategoryManagementPage';
 import PosPage from '../pages/PosPage';
+import StockMovementsPage from '../pages/StockMovementsPage';
 
 const AppRouter = () => (
     <BrowserRouter>
@@ -36,7 +37,7 @@ const AppRouter = () => (
                         <Route path="/products/:id/edit" element={<ProductFormPage />} />
                         <Route path="/products/categories" element={<CategoryManagementPage />} />
                         <Route path="/stocktake" element={<PlaceholderPage title="Stocktake" description="Count physical stock and review discrepancies." feature="F09" icon={ClipboardCheck} />} />
-                        <Route path="/movements" element={<PlaceholderPage title="Stock movements" description="Review and adjust the shop's stock audit trail." feature="F08" icon={SlidersHorizontal} />} />
+                        <Route path="/movements" element={<StockMovementsPage />} />
                         <Route path="/settings/users" element={<UserManagementPage />} />
                     </Route>
                 </Route>
