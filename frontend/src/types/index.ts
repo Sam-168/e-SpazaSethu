@@ -94,6 +94,40 @@ export interface SalesReportSummary {
     totalProfit: number;
 }
 
+export interface DailySalesReport {
+    date: string;
+    transactionCount: number;
+    totalSales: number;
+    totalProfit: number;
+}
+
+export interface PaymentReport {
+    paymentMethod: PaymentMethod;
+    transactionCount: number;
+    totalAmount: number;
+}
+
+export interface ProductPerformanceReport {
+    productId: string;
+    productName: string;
+    quantitySold: number;
+    revenue: number;
+    profit: number;
+}
+
+export interface PerformanceReport {
+    from: string;
+    to: string;
+    totalSales: number;
+    totalProfit: number;
+    transactionCount: number;
+    unitsSold: number;
+    averageSale: number;
+    dailySales: DailySalesReport[];
+    payments: PaymentReport[];
+    topProducts: ProductPerformanceReport[];
+}
+
 // --- Stocktakes ---
 export type StocktakeStatus = 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 

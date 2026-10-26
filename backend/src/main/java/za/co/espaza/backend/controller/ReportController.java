@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import za.co.espaza.backend.dto.response.DashboardReportResponse;
+import za.co.espaza.backend.dto.response.ReportPerformanceResponse;
 import za.co.espaza.backend.dto.response.SalesSummaryResponse;
 import za.co.espaza.backend.services.ReportService;
 
@@ -31,5 +32,12 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(reportService.summary(from, to));
+    }
+
+    @GetMapping("/performance")
+    public ResponseEntity<ReportPerformanceResponse> performance(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(reportService.performance(from, to));
     }
 }

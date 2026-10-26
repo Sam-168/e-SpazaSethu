@@ -3,7 +3,7 @@ import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 import AppShell from '../components/layout/AppShell';
 import PlaceholderPage from '../components/layout/PlaceholderPage';
-import { BarChart3, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 import LoginPage from '../pages/LoginPage';
 import SetupOwnerPage from '../pages/SetupOwnerPage';
@@ -19,6 +19,7 @@ import StockMovementsPage from '../pages/StockMovementsPage';
 import StocktakePage from '../pages/StocktakePage';
 import StocktakeCountPage from '../pages/StocktakeCountPage';
 import StocktakeReviewPage from '../pages/StocktakeReviewPage';
+import ReportsPage from '../pages/ReportsPage';
 
 const AppRouter = () => (
     <BrowserRouter>
@@ -33,7 +34,7 @@ const AppRouter = () => (
                     <Route path="/sales/:id" element={<SaleDetailPage />} />
                     <Route path="/pos" element={<PosPage />} />
                     <Route path="/products" element={<ProductsPage />} />
-                    <Route path="/reports" element={<PlaceholderPage title="Reports" description="Understand sales, profit and product performance." feature="F10" icon={BarChart3} />} />
+                    <Route path="/reports" element={<ReportsPage />} />
                     <Route path="/settings" element={<PlaceholderPage title="Settings" description="Manage shop and account preferences." feature="F12" icon={Settings} />} />
                     <Route element={<AdminRoute />}>
                         <Route path="/products/new" element={<ProductFormPage />} />
