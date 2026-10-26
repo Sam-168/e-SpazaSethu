@@ -93,6 +93,12 @@ public class Stocktake {
         this.completedAt = LocalDateTime.now();
     }
 
+    /** Abandons an unfinished count without changing any product quantities. */
+    public void cancel() {
+        this.status = StocktakeStatus.CANCELLED;
+        this.completedAt = LocalDateTime.now();
+    }
+
     public UUID getStocktakeId() {
         return stocktakeId;
     }

@@ -39,11 +39,10 @@ public class StocktakeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // GET /api/v1/stocktakes - list the current user's stocktakes, newest first (admin)
+    // GET /api/v1/stocktakes - list shop-wide stocktakes, newest first (admin)
     @GetMapping
     public ResponseEntity<List<StocktakeResponse>> getStocktakes() {
-        UUID userId = currentUserService.getCurrentUserId();
-        return ResponseEntity.ok(stocktakeService.getStocktakesForUser(userId));
+        return ResponseEntity.ok(stocktakeService.getStocktakes());
     }
 
     // GET /api/v1/stocktakes/{id} - full detail with all items (admin)
@@ -65,5 +64,11 @@ public class StocktakeController {
     public ResponseEntity<StocktakeResponse> applyAdjustments(@PathVariable UUID id) {
         UUID userId = currentUserService.getCurrentUserId();
         return ResponseEntity.ok(stocktakeService.applyAdjustments(id, userId));
+    }
+
+    // POST /api/v1/stocktakes/{id}/cancel - abandon an unfinished stocktake (admin)
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<StocktakeResponse> cancelStocktake(@PathVariable UUID id) {
+        return ResponseEntity.ok(stocktakeService.cancelStocktake(id));
     }
 }

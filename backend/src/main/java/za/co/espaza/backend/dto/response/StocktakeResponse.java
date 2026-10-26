@@ -19,12 +19,17 @@ public record StocktakeResponse(
 ) {
 
     public static StocktakeResponse from(Stocktake stocktake) {
-        return from(stocktake, Map.of());
+        return from(stocktake, Map.of(), Map.of());
     }
 
-    public static StocktakeResponse from(Stocktake stocktake, Map<String, String> productNames) {
+    public static StocktakeResponse from(Stocktake stocktake,
+                                         Map<String, String> productNames,
+                                         Map<String, String> productBarcodes) {
         List<StocktakeItemResponse> items = stocktake.getItems().stream()
-                .map(item -> StocktakeItemResponse.from(item, productNames.get(item.getProductId())))
+                .map(item -> StocktakeItemResponse.from(
+                        item,
+                        productNames.get(item.getProductId()),
+                        productBarcodes.get(item.getProductId())))
                 .toList();
 
         return new StocktakeResponse(

@@ -8,6 +8,7 @@ public record StocktakeItemResponse(
         UUID stocktakeItemId,
         String productId,
         String productName,
+        String barcode,
         int systemQuantity,
         Integer countedQuantity,
         Integer discrepancy,
@@ -15,14 +16,15 @@ public record StocktakeItemResponse(
 ) {
 
     public static StocktakeItemResponse from(StocktakeItem item) {
-        return from(item, null);
+        return from(item, null, null);
     }
 
-    public static StocktakeItemResponse from(StocktakeItem item, String productName) {
+    public static StocktakeItemResponse from(StocktakeItem item, String productName, String barcode) {
         return new StocktakeItemResponse(
                 item.getStocktakeItemId(),
                 item.getProductId(),
                 productName,
+                barcode,
                 item.getSystemQuantity(),
                 item.getCountedQuantity(),
                 item.getDiscrepancy(),

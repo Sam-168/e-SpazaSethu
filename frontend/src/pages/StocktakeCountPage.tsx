@@ -1,0 +1,40 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Check, ScanLine, Search } from 'lucide-react';
+import api from '../services/api';
+import type { Stocktake } from '../types';
+import { BarcodeScannerDialog } from '../components/ui/BarcodeScannerDialog';
+import { Button } from '../components/ui/Button';
+import { EmptyState } from '../components/ui/EmptyState';
+import { LoadingState } from '../components/ui/LoadingState';
+import { PageHeader } from '../components/ui/PageHeader';
+import { getApiErrorMessage } from '../utils/api-error';
+
+type CountValues=Record<string,string>;
+const compactBarcode=(value:string|null|undefined)=>(value||'').replace(/[\s-]/g,'');
+
+export default function StocktakeCountPage(){
+    const {id}=useParams<{id:string}>(); const navigate=useNavigate(); const inputRefs=useRef<Record<string,HTMLInputElement|null>>({});
+    const [stocktake,setStocktake]=useState<Stocktake|null>(null); const [counts,setCounts]=useState<CountValues>({}); const [search,setSearch]=useState(''); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [scannerOpen,setScannerOpen]=useState(false); const [error,setError]=useState<string|null>(null); const [saved,setSaved]=useState(false);
+    const load=useCallback(async()=>{setLoading(true);setError(null);try{const {data}=await api.get<Stocktake>(`/stocktakes/${id}`);setStocktake(data);setCounts(Object.fromEntries(data.items.map(item=>[item.stocktakeItemId,item.countedQuantity===null?'':String(item.countedQuantity)])));if(data.status!=='IN_PROGRESS')navigate(`/stocktake/${data.stocktakeId}/review`,{replace:true});}catch(caught){setError(getApiErrorMessage(caught,'The stocktake could not be loaded.'));}finally{setLoading(false);}},[id,navigate]);
+    useEffect(()=>{
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- entering the route loads the active count
+        void load();
+    },[load]);
+    const items=useMemo(()=>stocktake?.items||[],[stocktake]);
+    const filtered=useMemo(()=>{const term=search.trim().toLowerCase();if(!term)return items;const barcode=compactBarcode(term);return items.filter(item=>item.productName.toLowerCase().includes(term)||compactBarcode(item.barcode).includes(barcode));},[items,search]);
+    const counted=items.filter(item=>(counts[item.stocktakeItemId]??'').trim()!=='').length; const complete=items.length>0&&counted===items.length; const progress=items.length?Math.round(counted/items.length*100):0;
+    const update=(itemId:string,value:string)=>{if(value!==''&&!/^\d+$/.test(value))return;setSaved(false);setCounts(current=>({...current,[itemId]:value}));};
+    const save=async(review=false)=>{if(!stocktake)return;if(review&&!complete){setError(`Count the remaining ${items.length-counted} products before reviewing.`);return;}const invalid=items.some(item=>{const value=counts[item.stocktakeItemId]??'';return value!==''&&(!Number.isSafeInteger(Number(value))||Number(value)>2147483647);});if(invalid){setError('Counts must be whole numbers between 0 and 2,147,483,647.');return;}setSaving(true);setError(null);try{const payload=items.map(item=>({stocktakeItemId:item.stocktakeItemId,countedQuantity:(counts[item.stocktakeItemId]??'')===''?null:Number(counts[item.stocktakeItemId])}));const {data}=await api.post<Stocktake>(`/stocktakes/${stocktake.stocktakeId}/items`,payload);setStocktake(data);setSaved(true);if(review)navigate(`/stocktake/${stocktake.stocktakeId}/review`);}catch(caught){setError(getApiErrorMessage(caught,'Your counts could not be saved.'));}finally{setSaving(false);}};
+    const handleScan=(barcode:string)=>{const value=compactBarcode(barcode);const item=items.find(candidate=>compactBarcode(candidate.barcode)===value);setScannerOpen(false);if(!item){setError(`No product in this stocktake uses barcode ${barcode}.`);return;}setSearch(item.productName);setError(null);window.requestAnimationFrame(()=>{const input=inputRefs.current[item.stocktakeItemId];input?.scrollIntoView({behavior:'smooth',block:'center'});input?.focus();input?.select();});};
+    if(loading)return <div className="app-page"><LoadingState label="Loading stocktake" /></div>;
+    return <div className="app-page"><PageHeader title="Count stock" description={`${counted} of ${items.length} products counted`} onBack={()=>navigate('/stocktake')} action={<Button variant="secondary" leadingIcon={<ScanLine className="h-5 w-5" />} onClick={()=>setScannerOpen(true)}><span className="hidden sm:inline">Scan product</span><span className="sm:hidden">Scan</span></Button>} />
+        <div className="mb-5"><div className="mb-2 flex justify-between text-sm"><span className="font-medium text-ink">Progress</span><span className="text-muted">{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-gray-200"><div className="h-full bg-brand-700 transition-[width]" style={{width:`${progress}%`}} /></div></div>
+        {saved&&<div role="status" className="mb-4 flex items-center gap-2 bg-brand-50 px-4 py-3 text-sm text-brand-900"><Check className="h-4 w-4" />Progress saved.</div>}
+        {error&&<p role="alert" className="mb-4 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+        <div className="relative mb-4"><label htmlFor="stocktake-search" className="sr-only">Find a product</label><Search className="pointer-events-none absolute left-3.5 top-3.5 h-5 w-5 text-muted" /><input id="stocktake-search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Find by product name or barcode" className="min-h-12 w-full rounded-lg border border-line bg-white pl-11 pr-4 outline-none focus:border-brand-700 focus:ring-3 focus:ring-brand-100" /></div>
+        {filtered.length===0?<EmptyState icon={<Search className="h-8 w-8" />} title="No product found" description="Clear the search or scan a barcode from this stocktake." />:<ul className="divide-y divide-line border-y border-line bg-white">{filtered.map(item=>{const value=counts[item.stocktakeItemId]??'';return <li key={item.stocktakeItemId} className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_8rem]"><div className="min-w-0"><p className="truncate font-semibold text-ink">{item.productName}</p><p className="mt-1 text-xs text-muted">{item.barcode||'No barcode'} · system quantity {item.systemQuantity}</p></div><label><span className="sr-only">Physical quantity for {item.productName}</span><input ref={element=>{inputRefs.current[item.stocktakeItemId]=element;}} inputMode="numeric" pattern="[0-9]*" maxLength={10} value={value} onChange={event=>update(item.stocktakeItemId,event.target.value)} placeholder="Count" aria-label={`Physical quantity for ${item.productName}`} className={`min-h-12 w-full rounded-lg border px-3 text-right text-lg font-semibold outline-none focus:border-brand-700 focus:ring-3 focus:ring-brand-100 ${value===''?'border-line bg-white':'border-brand-300 bg-brand-50'}`} /></label></li>;})}</ul>}
+        <div className="sticky bottom-16 z-30 -mx-4 mt-5 border-t border-line bg-white p-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3"><Button variant="secondary" size="lg" className="w-full" loading={saving} onClick={()=>void save(false)}>Save progress</Button><Button size="lg" className="mt-2 w-full sm:mt-0" disabled={!complete} onClick={()=>void save(true)}>Review differences</Button></div>
+        <BarcodeScannerDialog open={scannerOpen} title="Scan a product to count" onClose={()=>setScannerOpen(false)} onScan={handleScan} />
+    </div>;
+}

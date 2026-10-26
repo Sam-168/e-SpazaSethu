@@ -3,7 +3,7 @@ import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 import AppShell from '../components/layout/AppShell';
 import PlaceholderPage from '../components/layout/PlaceholderPage';
-import { BarChart3, ClipboardCheck, Settings } from 'lucide-react';
+import { BarChart3, Settings } from 'lucide-react';
 
 import LoginPage from '../pages/LoginPage';
 import SetupOwnerPage from '../pages/SetupOwnerPage';
@@ -16,6 +16,9 @@ import ProductFormPage from '../pages/ProductFormPage';
 import CategoryManagementPage from '../pages/CategoryManagementPage';
 import PosPage from '../pages/PosPage';
 import StockMovementsPage from '../pages/StockMovementsPage';
+import StocktakePage from '../pages/StocktakePage';
+import StocktakeCountPage from '../pages/StocktakeCountPage';
+import StocktakeReviewPage from '../pages/StocktakeReviewPage';
 
 const AppRouter = () => (
     <BrowserRouter>
@@ -36,7 +39,9 @@ const AppRouter = () => (
                         <Route path="/products/new" element={<ProductFormPage />} />
                         <Route path="/products/:id/edit" element={<ProductFormPage />} />
                         <Route path="/products/categories" element={<CategoryManagementPage />} />
-                        <Route path="/stocktake" element={<PlaceholderPage title="Stocktake" description="Count physical stock and review discrepancies." feature="F09" icon={ClipboardCheck} />} />
+                        <Route path="/stocktake" element={<StocktakePage />} />
+                        <Route path="/stocktake/:id/count" element={<StocktakeCountPage />} />
+                        <Route path="/stocktake/:id/review" element={<StocktakeReviewPage />} />
                         <Route path="/movements" element={<StockMovementsPage />} />
                         <Route path="/settings/users" element={<UserManagementPage />} />
                     </Route>

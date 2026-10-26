@@ -94,6 +94,30 @@ export interface SalesReportSummary {
     totalProfit: number;
 }
 
+// --- Stocktakes ---
+export type StocktakeStatus = 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface StocktakeItem {
+    stocktakeItemId: string;
+    productId: string;
+    productName: string;
+    barcode?: string | null;
+    systemQuantity: number;
+    countedQuantity: number | null;
+    discrepancy: number | null;
+    adjusted: boolean;
+}
+
+export interface Stocktake {
+    stocktakeId: string;
+    conductedBy: string;
+    startedAt: string;
+    completedAt?: string | null;
+    status: StocktakeStatus;
+    notes?: string | null;
+    items: StocktakeItem[];
+}
+
 // --- Generic API shapes ---
 export interface PaginatedResponse<T> {
     data: T[];

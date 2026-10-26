@@ -40,13 +40,18 @@ public class StocktakeService {
     /** Starts a stocktake by snapshotting every active product's current quantity. */
     @Transactional
     public StocktakeResponse startStocktake(UUID userId) {
-        stocktakeRepository.findByStatusAndConductedBy(StocktakeStatus.IN_PROGRESS, userId)
+        stocktakeRepository.findFirstByStatusOrderByStartedAtDesc(StocktakeStatus.IN_PROGRESS)
                 .ifPresent(existing -> {
                     throw new BusinessRuleException("A stocktake is already in progress");
                 });
 
+        List<Product> activeProducts = productRepository.findByIsActiveTrue();
+        if (activeProducts.isEmpty()) {
+            throw new BusinessRuleException("Add at least one active product before starting a stocktake");
+        }
+
         Stocktake stocktake = new Stocktake(userId, null);
-        productRepository.findByIsActiveTrue().forEach(product ->
+        activeProducts.forEach(product ->
                 stocktake.addItem(new StocktakeItem(product.getProductId(), product.getStockQuantity())));
         return toResponse(stocktakeRepository.save(stocktake));
     }
@@ -56,12 +61,22 @@ public class StocktakeService {
     public StocktakeResponse submitCounts(UUID stocktakeId, List<StocktakeCountRequest> counts) {
         Stocktake stocktake = getInProgressStocktake(stocktakeId);
 
+        if (counts == null) {
+            throw new BusinessRuleException("Counts are required");
+        }
+
         Map<UUID, StocktakeItem> itemsById = stocktake.getItems().stream()
                 .collect(Collectors.toMap(StocktakeItem::getStocktakeItemId, item -> item));
 
         for (StocktakeCountRequest count : counts) {
+            if (count == null) {
+                throw new BusinessRuleException("Each count must contain a stocktake item and quantity");
+            }
             if (count.stocktakeItemId() == null) {
                 throw new BusinessRuleException("Each count must reference a stocktake item");
+            }
+            if (count.countedQuantity() != null && count.countedQuantity() < 0) {
+                throw new BusinessRuleException("Counted quantities cannot be negative");
             }
             StocktakeItem item = itemsById.get(count.stocktakeItemId());
             if (item == null) {
@@ -80,23 +95,30 @@ public class StocktakeService {
     public StocktakeResponse applyAdjustments(UUID stocktakeId, UUID userId) {
         Stocktake stocktake = getInProgressStocktake(stocktakeId);
 
+        long uncounted = stocktake.getItems().stream()
+                .filter(item -> item.getCountedQuantity() == null)
+                .count();
+        if (uncounted > 0) {
+            throw new BusinessRuleException("Count every product before applying the stocktake");
+        }
+
         for (StocktakeItem item : stocktake.getItems()) {
-            if (item.getCountedQuantity() == null || item.getDiscrepancy() == null || item.getDiscrepancy() == 0) {
-                continue;
-            }
             Product product = productRepository.findByIdForUpdate(item.getProductId())
                     .orElseThrow(() -> new EntityNotFoundException("Product not found: " + item.getProductId()));
-            product.setStockQuantity(item.getCountedQuantity());
-            productRepository.save(product);
+            int quantityChange = item.getCountedQuantity() - product.getStockQuantity();
+            if (quantityChange != 0) {
+                product.setStockQuantity(item.getCountedQuantity());
+                productRepository.save(product);
 
-            StockMovement movement = new StockMovement();
-            movement.setProductId(product.getProductId());
-            movement.setCreatedBy(userId.toString());
-            movement.setQuantityChange(item.getDiscrepancy());
-            movement.setMovementType(MovementType.STOCKTAKE_CORRECTION);
-            movement.setReferenceId(stocktakeId.toString());
-            movement.setNotes("Stocktake correction");
-            movementRepository.save(movement);
+                StockMovement movement = new StockMovement();
+                movement.setProductId(product.getProductId());
+                movement.setCreatedBy(userId.toString());
+                movement.setQuantityChange(quantityChange);
+                movement.setMovementType(MovementType.STOCKTAKE_CORRECTION);
+                movement.setReferenceId(stocktakeId.toString());
+                movement.setNotes("Stocktake correction");
+                movementRepository.save(movement);
+            }
             item.applyAdjustment();
         }
 
@@ -105,10 +127,17 @@ public class StocktakeService {
     }
 
     @Transactional(readOnly = true)
-    public List<StocktakeResponse> getStocktakesForUser(UUID userId) {
-        return stocktakeRepository.findByConductedByOrderByStartedAtDesc(userId).stream()
+    public List<StocktakeResponse> getStocktakes() {
+        return stocktakeRepository.findAllByOrderByStartedAtDesc().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public StocktakeResponse cancelStocktake(UUID stocktakeId) {
+        Stocktake stocktake = getInProgressStocktake(stocktakeId);
+        stocktake.cancel();
+        return toResponse(stocktakeRepository.save(stocktake));
     }
 
     @Transactional(readOnly = true)
@@ -129,10 +158,13 @@ public class StocktakeService {
     }
 
     private StocktakeResponse toResponse(Stocktake stocktake) {
-        Map<String, String> productNames = productRepository.findAllById(
-                        stocktake.getItems().stream().map(StocktakeItem::getProductId).toList())
-                .stream()
+        List<Product> products = productRepository.findAllById(
+                stocktake.getItems().stream().map(StocktakeItem::getProductId).toList());
+        Map<String, String> productNames = products.stream()
                 .collect(Collectors.toMap(Product::getProductId, Product::getName));
-        return StocktakeResponse.from(stocktake, productNames);
+        Map<String, String> productBarcodes = products.stream()
+                .filter(product -> product.getBarcode() != null)
+                .collect(Collectors.toMap(Product::getProductId, Product::getBarcode));
+        return StocktakeResponse.from(stocktake, productNames, productBarcodes);
     }
 }

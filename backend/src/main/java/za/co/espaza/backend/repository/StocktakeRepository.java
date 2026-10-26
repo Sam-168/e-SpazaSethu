@@ -12,9 +12,9 @@ import java.util.UUID;
 @Repository
 public interface StocktakeRepository extends JpaRepository<Stocktake, UUID> {
 
-    // All stocktakes conducted by a user, most recent first
-    List<Stocktake> findByConductedByOrderByStartedAtDesc(UUID conductedBy);
+    // Shop-wide history, newest first. A stocktake is an inventory-wide operation.
+    List<Stocktake> findAllByOrderByStartedAtDesc();
 
-    // Find an in-progress (or otherwise filtered) stocktake for a user
-    Optional<Stocktake> findByStatusAndConductedBy(StocktakeStatus status, UUID conductedBy);
+    // Only one shop-wide stocktake may be active at a time.
+    Optional<Stocktake> findFirstByStatusOrderByStartedAtDesc(StocktakeStatus status);
 }
