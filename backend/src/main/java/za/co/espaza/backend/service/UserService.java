@@ -9,6 +9,7 @@ import za.co.espaza.backend.dto.request.UpdateUserRequest;
 import za.co.espaza.backend.dto.response.UserResponse;
 import za.co.espaza.backend.entity.User;
 import za.co.espaza.backend.exception.DuplicateResourceException;
+import za.co.espaza.backend.exception.BusinessRuleException;
 import za.co.espaza.backend.exception.ResourceNotFoundException;
 import za.co.espaza.backend.repository.UserRepository;
 
@@ -61,16 +62,28 @@ public class UserService {
         return userRepository.count() == 0;
     }
 
-    public UserResponse updateUser(String userId, UpdateUserRequest request) {
+    @Transactional
+    public UserResponse updateUser(String userId, String currentUserId, UpdateUserRequest request) {
 
         User user = findUser(userId);
 
-        if (Boolean.FALSE.equals(request.getIsActive()) && Boolean.TRUE.equals(user.getIsActive()) && user.getRole() == Role.ADMIN) {
+        boolean roleChanges = request.getRole() != null && request.getRole() != user.getRole();
+        boolean statusChanges = request.getIsActive() != null && !request.getIsActive().equals(user.getIsActive());
+
+        if (userId.equals(currentUserId) && (roleChanges || statusChanges)) {
+            throw new BusinessRuleException("You cannot change the role or status of your own account");
+        }
+
+        boolean removesActiveAdmin = user.getRole() == Role.ADMIN
+                && Boolean.TRUE.equals(user.getIsActive())
+                && (request.getRole() == Role.CASHIER || Boolean.FALSE.equals(request.getIsActive()));
+
+        if (removesActiveAdmin) {
 
             long activeAdminCount = userRepository.countByRoleAndIsActiveTrue(Role.ADMIN);
 
             if (activeAdminCount <= 1) {
-                throw new IllegalStateException("Cannot deactivate the last remaining admin");
+                throw new BusinessRuleException("You cannot remove or deactivate the last active administrator");
             }
         }
 

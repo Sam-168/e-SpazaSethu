@@ -10,6 +10,7 @@ import za.co.espaza.backend.dto.request.ResetPasswordRequest;
 import za.co.espaza.backend.dto.request.UpdateUserRequest;
 import za.co.espaza.backend.dto.response.UserResponse;
 import za.co.espaza.backend.service.UserService;
+import za.co.espaza.backend.security.CurrentUserService;
 
 import java.util.List;
 
@@ -17,9 +18,11 @@ import java.util.List;
 @RequestMapping("/api/v1/users")
 public class UserController {
     private final UserService userService;
+    private final CurrentUserService currentUserService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, CurrentUserService currentUserService) {
         this.userService = userService;
+        this.currentUserService = currentUserService;
     }
 
     @GetMapping
@@ -52,7 +55,7 @@ public class UserController {
     ) {
 
         UserResponse response =
-                userService.updateUser(userId, request);
+                userService.updateUser(userId, currentUserService.getCurrentUserId().toString(), request);
 
         return ResponseEntity.ok(response);
     }
