@@ -109,6 +109,19 @@ public class UserService {
         userRepository.save(user);
     }
 
+    @Transactional
+    public void changeOwnPassword(String userId, String currentPassword, String newPassword) {
+        User user = findUser(userId);
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BusinessRuleException("Current password is incorrect");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new BusinessRuleException("New password must be different from the current password");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
 

@@ -6,6 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import za.co.espaza.backend.dto.request.CreateUserRequest;
+import za.co.espaza.backend.dto.request.ChangeOwnPasswordRequest;
 import za.co.espaza.backend.dto.request.ResetPasswordRequest;
 import za.co.espaza.backend.dto.request.UpdateUserRequest;
 import za.co.espaza.backend.dto.response.UserResponse;
@@ -73,6 +74,15 @@ public class UserController {
                 request.getNewPassword()
         );
 
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changeOwnPassword(@Valid @RequestBody ChangeOwnPasswordRequest request) {
+        userService.changeOwnPassword(
+                currentUserService.getCurrentUserId().toString(),
+                request.currentPassword(),
+                request.newPassword());
         return ResponseEntity.noContent().build();
     }
 }

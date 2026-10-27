@@ -324,6 +324,30 @@ class BackendApplicationTests {
     }
 
     @Test
+    void authenticatedUserCanChangeTheirOwnPassword() throws Exception {
+        String token = login(username, "checkout-password");
+
+        mockMvc.perform(patch("/api/v1/users/me/password")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.createObjectNode()
+                                .put("currentPassword", "checkout-password")
+                                .put("newPassword", "ChangedPassword@2026")
+                                .toString()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.createObjectNode()
+                                .put("username", username)
+                                .put("password", "checkout-password")
+                                .toString()))
+                .andExpect(status().isUnauthorized());
+
+        login(username, "ChangedPassword@2026");
+    }
+
+    @Test
     void adminCanManageCatalogueAndCashierCanSearchByBarcode() throws Exception {
         String adminUsername = "catalogue-admin-" + UUID.randomUUID();
         jdbcTemplate.update("""

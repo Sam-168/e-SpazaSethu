@@ -71,6 +71,35 @@ class UserServiceTest {
         verify(userRepository).save(cashier);
     }
 
+    @Test
+    void accountOwnerMustProvideTheCurrentPassword() {
+        User user = user("cashier-1", Role.CASHIER, true);
+        user.setPasswordHash("stored-hash");
+        when(userRepository.findById("cashier-1")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "stored-hash")).thenReturn(false);
+
+        BusinessRuleException error = assertThrows(BusinessRuleException.class,
+                () -> service.changeOwnPassword("cashier-1", "wrong-password", "NewPassword123"));
+
+        assertEquals("Current password is incorrect", error.getMessage());
+        verify(userRepository, never()).save(user);
+    }
+
+    @Test
+    void accountOwnerCanChangeTheirPassword() {
+        User user = user("cashier-1", Role.CASHIER, true);
+        user.setPasswordHash("stored-hash");
+        when(userRepository.findById("cashier-1")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("old-password", "stored-hash")).thenReturn(true);
+        when(passwordEncoder.matches("new-password", "stored-hash")).thenReturn(false);
+        when(passwordEncoder.encode("new-password")).thenReturn("new-hash");
+
+        service.changeOwnPassword("cashier-1", "old-password", "new-password");
+
+        assertEquals("new-hash", user.getPasswordHash());
+        verify(userRepository).save(user);
+    }
+
     private User user(String id, Role role, boolean active) {
         User user = new User();
         user.setUserId(id);

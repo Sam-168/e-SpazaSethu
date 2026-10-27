@@ -2,8 +2,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 import AppShell from '../components/layout/AppShell';
-import PlaceholderPage from '../components/layout/PlaceholderPage';
-import { Settings } from 'lucide-react';
 
 import LoginPage from '../pages/LoginPage';
 import SetupOwnerPage from '../pages/SetupOwnerPage';
@@ -20,6 +18,7 @@ import StocktakePage from '../pages/StocktakePage';
 import StocktakeCountPage from '../pages/StocktakeCountPage';
 import StocktakeReviewPage from '../pages/StocktakeReviewPage';
 import ReportsPage from '../pages/ReportsPage';
+import SettingsPage from '../pages/SettingsPage';
 
 const AppRouter = () => (
     <BrowserRouter>
@@ -35,7 +34,7 @@ const AppRouter = () => (
                     <Route path="/pos" element={<PosPage />} />
                     <Route path="/products" element={<ProductsPage />} />
                     <Route path="/reports" element={<ReportsPage />} />
-                    <Route path="/settings" element={<PlaceholderPage title="Settings" description="Manage shop and account preferences." feature="F12" icon={Settings} />} />
+                    <Route path="/settings" element={<SettingsPage />} />
                     <Route element={<AdminRoute />}>
                         <Route path="/products/new" element={<ProductFormPage />} />
                         <Route path="/products/:id/edit" element={<ProductFormPage />} />
