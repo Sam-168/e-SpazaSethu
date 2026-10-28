@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.espaza.backend.dto.response.DashboardReportResponse;
 import za.co.espaza.backend.dto.response.SalesSummaryResponse;
+import za.co.espaza.backend.dto.response.TopProductResponse;
 import za.co.espaza.backend.entity.Product;
 import za.co.espaza.backend.entity.Sale;
 import za.co.espaza.backend.entity.SaleItem;
@@ -15,6 +16,7 @@ import za.co.espaza.backend.repository.SaleRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
+    private static final int TOP_PRODUCT_LIMIT = 5;
+
     private final SaleRepository saleRepository;
     private final ProductRepository productRepository;
 
@@ -39,16 +43,71 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public SalesSummaryResponse summary(LocalDate from, LocalDate to) {
-        if (from.isAfter(to)) {
-            throw new BusinessRuleException("'from' date cannot be after 'to' date");
-        }
+        validateDateRange(from, to);
         List<Sale> sales = completedSales(from, to);
         return new SalesSummaryResponse(totalSales(sales), totalProfit(sales));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TopProductResponse> topProductsByQuantity(LocalDate from, LocalDate to) {
+        return topProducts(from, to, Comparator
+                .comparingLong(TopProductResponse::quantitySold)
+                .reversed()
+                .thenComparing(TopProductResponse::productName, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(TopProductResponse::productId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TopProductResponse> topProductsByRevenue(LocalDate from, LocalDate to) {
+        return topProducts(from, to, Comparator
+                .comparing(TopProductResponse::revenue)
+                .reversed()
+                .thenComparing(TopProductResponse::productName, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(TopProductResponse::productId));
     }
 
     private List<Sale> completedSales(LocalDate from, LocalDate to) {
         return saleRepository.findBySaleDateTimeBetweenAndStatus(
                 from.atStartOfDay(), to.atTime(LocalTime.MAX), SaleStatus.COMPLETED);
+    }
+
+    private List<TopProductResponse> topProducts(
+            LocalDate from,
+            LocalDate to,
+            Comparator<TopProductResponse> ordering) {
+        validateDateRange(from, to);
+        List<Sale> sales = completedSales(from, to);
+
+        Map<String, ProductTotals> totalsByProduct = sales.stream()
+                .flatMap(sale -> sale.getItems().stream())
+                .collect(Collectors.toMap(
+                        SaleItem::getProductId,
+                        item -> new ProductTotals(item.getQuantity(), item.getSubtotal()),
+                        ProductTotals::add));
+
+        if (totalsByProduct.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, String> productNames = productRepository.findAllById(totalsByProduct.keySet())
+                .stream()
+                .collect(Collectors.toMap(Product::getProductId, Product::getName));
+
+        return totalsByProduct.entrySet().stream()
+                .map(entry -> new TopProductResponse(
+                        entry.getKey(),
+                        productNames.getOrDefault(entry.getKey(), "Unknown product"),
+                        entry.getValue().quantitySold(),
+                        entry.getValue().revenue()))
+                .sorted(ordering)
+                .limit(TOP_PRODUCT_LIMIT)
+                .toList();
+    }
+
+    private void validateDateRange(LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw new BusinessRuleException("'from' date cannot be after 'to' date");
+        }
     }
 
     private BigDecimal totalSales(List<Sale> sales) {
@@ -68,5 +127,13 @@ public class ReportService {
                     : product.getCostPrice();
             return item.getUnitPrice().subtract(cost).multiply(BigDecimal.valueOf(item.getQuantity()));
         }).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private record ProductTotals(long quantitySold, BigDecimal revenue) {
+        private ProductTotals add(ProductTotals other) {
+            return new ProductTotals(
+                    quantitySold + other.quantitySold,
+                    revenue.add(other.revenue));
+        }
     }
 }
