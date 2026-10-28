@@ -3,20 +3,9 @@ import { Link } from 'react-router-dom';
 import { ClipboardList, PackagePlus, ShoppingCart } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { DashboardData, SaleSummary } from '../types';
+import type { DashboardData, LowStockProduct, SaleSummary } from '../types';
 
 type LoadState = 'loading' | 'success' | 'error';
-
-// Defined locally rather than imported from '../types': not exported
-// there yet, and the exact field names from GET /products/low-stock
-// haven't been confirmed against the real backend response. Swap this
-// for the shared type once that's settled.
-interface LowStockProduct {
-    productId: string;
-    name: string;
-    stockQuantity: number;
-    lowStockThreshold: number;
-}
 
 const currency = new Intl.NumberFormat('en-ZA', {
     style: 'currency',
