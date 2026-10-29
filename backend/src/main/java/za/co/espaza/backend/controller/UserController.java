@@ -3,7 +3,7 @@ package za.co.espaza.backend.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import za.co.espaza.backend.dto.request.CreateUserRequest;
 import za.co.espaza.backend.dto.request.ResetPasswordRequest;
@@ -34,7 +34,7 @@ public class UserController {
     @PostMapping
    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> createUser(
-            @Validated @RequestBody CreateUserRequest request
+            @Valid @RequestBody CreateUserRequest request
     ) {
 
         UserResponse response = userService.createUser(request);
@@ -48,7 +48,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable("id") String userId,
-            @Validated @RequestBody UpdateUserRequest request
+            @Valid @RequestBody UpdateUserRequest request
     ) {
 
         UserResponse response =
@@ -62,7 +62,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> resetPassword(
             @PathVariable("id") String userId,
-            @Validated @RequestBody ResetPasswordRequest request
+            @Valid @RequestBody ResetPasswordRequest request
     ) {
 
         userService.resetPassword(

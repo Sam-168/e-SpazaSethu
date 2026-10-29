@@ -71,6 +71,7 @@ public class StocktakeItem {
     }
 
     public StocktakeItem(String productId, int systemQuantity) {
+        this.stocktakeItemId = UUID.randomUUID();
         this.productId = productId;
         this.systemQuantity = systemQuantity;
     }

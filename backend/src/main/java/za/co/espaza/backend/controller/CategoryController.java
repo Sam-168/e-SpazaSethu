@@ -4,7 +4,7 @@ package za.co.espaza.backend.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import za.co.espaza.backend.dto.response.CategoryResponse;
 import za.co.espaza.backend.dto.request.CreateCategoryRequest;
@@ -33,7 +33,7 @@ public class CategoryController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CategoryResponse> createCategory(
-            @Validated @RequestBody CreateCategoryRequest request) {
+            @Valid @RequestBody CreateCategoryRequest request) {
         CategoryResponse created = categoryService.createCategory(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -42,7 +42,7 @@ public class CategoryController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CategoryResponse> updateCategory(
             @PathVariable("id") String id,
-            @Validated @RequestBody UpdateCategoryRequest request) {
+            @Valid @RequestBody UpdateCategoryRequest request) {
         return ResponseEntity.ok(categoryService.updateCategory(id, request));
     }
 

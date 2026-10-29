@@ -1,4 +1,5 @@
 package za.co.espaza.backend.controller;
+import jakarta.validation.Valid;
 import za.co.espaza.backend.dto.request.LoginRequest;
 import za.co.espaza.backend.dto.response.LoginResponse;
 import za.co.espaza.backend.security.CustomUserDetailsService;
@@ -30,7 +31,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             // This line does two things: checks the username exists,
             // and verifies the password matches the BCrypt hash in the DB
