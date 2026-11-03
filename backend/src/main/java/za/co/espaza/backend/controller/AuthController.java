@@ -42,7 +42,9 @@ public class AuthController {
                     )
             );
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(401).body("Incorrect username or password");
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(new za.co.espaza.backend.dto.response.ErrorResponse(
+                            401, "Unauthorized", "Incorrect username or password", "/api/v1/auth/login"));
         }
 
         // If we get here, credentials are valid — generate a token
