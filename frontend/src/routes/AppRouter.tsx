@@ -7,6 +7,7 @@ import LoginPage from '../pages/LoginPage';
 import DashboardPage from '../pages/DashboardPage';
 import SalesHistoryPage from '../pages/SalesHistoryPage';
 import SaleDetailPage from '../pages/SaleDetailPage';
+import ReportsPage from '../pages/ReportsPage';
 
 const AppRouter = () => (
     <BrowserRouter>
@@ -23,7 +24,7 @@ const AppRouter = () => (
                 <Route path="/products" element={<div>Products</div>} />
                 <Route path="/products/new" element={<div>Add Product</div>} />
                 <Route path="/products/:id/edit" element={<div>Edit Product</div>} />
-                <Route path="/reports" element={<div>Reports</div>} />
+                <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/stocktake" element={<div>Stocktake</div>} />
                 <Route path="/settings" element={<div>Settings</div>} />
 

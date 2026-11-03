@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -115,6 +116,24 @@ class BackendApplicationTests {
                 .andExpect(jsonPath("$.totalSales").value(25.0))
                 .andExpect(jsonPath("$.totalProfit").value(9.0))
                 .andExpect(jsonPath("$.transactionCount").value(1));
+
+        String today = LocalDate.now().toString();
+        String reportRange = "?from=" + today + "&to=" + today;
+
+        mockMvc.perform(get("/api/v1/reports/top-products/by-quantity" + reportRange)
+                        .header("Authorization", bearerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].productId").value(productId))
+                .andExpect(jsonPath("$[0].productName").value("Test Bread"))
+                .andExpect(jsonPath("$[0].quantitySold").value(2))
+                .andExpect(jsonPath("$[0].revenue").value(25.0));
+
+        mockMvc.perform(get("/api/v1/reports/top-products/by-revenue" + reportRange)
+                        .header("Authorization", bearerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].productId").value(productId))
+                .andExpect(jsonPath("$[0].quantitySold").value(2))
+                .andExpect(jsonPath("$[0].revenue").value(25.0));
     }
 
 }

@@ -36,6 +36,13 @@ export interface Product {
     active?: boolean;
 }
 
+export interface LowStockProduct {
+    productId: string;
+    name: string;
+    stockQuantity: number;
+    lowStockThreshold: number;
+}
+
 export interface Category {
     categoryId: string;
     name: string;
@@ -92,6 +99,13 @@ export interface Sale {
 export interface SalesReportSummary {
     totalAmount: number;
     totalProfit: number;
+}
+
+export interface TopProductReport {
+    productId: string;
+    productName: string;
+    quantitySold: number;
+    revenue: number;
 }
 
 // --- Generic API shapes ---

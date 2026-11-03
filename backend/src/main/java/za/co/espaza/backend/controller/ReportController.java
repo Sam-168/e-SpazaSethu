@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import za.co.espaza.backend.dto.response.DashboardReportResponse;
 import za.co.espaza.backend.dto.response.SalesSummaryResponse;
+import za.co.espaza.backend.dto.response.TopProductResponse;
 import za.co.espaza.backend.services.ReportService;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -31,5 +33,19 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(reportService.summary(from, to));
+    }
+
+    @GetMapping("/top-products/by-quantity")
+    public ResponseEntity<List<TopProductResponse>> topProductsByQuantity(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(reportService.topProductsByQuantity(from, to));
+    }
+
+    @GetMapping("/top-products/by-revenue")
+    public ResponseEntity<List<TopProductResponse>> topProductsByRevenue(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(reportService.topProductsByRevenue(from, to));
     }
 }
