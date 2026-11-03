@@ -28,7 +28,9 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
-/** Coordinates checkout, sales history and cancellation. */
+/**
+ * Coordinates checkout, sales history and cancellation.
+ */
 @Service
 public class SaleService {
 
@@ -48,26 +50,49 @@ public class SaleService {
     }
 
     @Transactional
+    public SaleResponse completeSale(CreateSaleRequest request, UUID userId) {
+        return createSale(request, userId);
+    }
+
+    @Transactional
     public SaleResponse createSale(CreateSaleRequest request, UUID userId) {
+        if (request == null || request.items() == null || request.items().isEmpty()) {
+            throw new BusinessRuleException("A sale must contain at least one item");
+        }
+
         Map<String, Integer> quantities = new LinkedHashMap<>();
         request.items().forEach(item -> quantities.merge(item.productId(), item.quantity(), Integer::sum));
 
         Sale sale = new Sale(userId, request.paymentMethod(), SaleStatus.COMPLETED, request.notes());
         Map<String, Product> products = new LinkedHashMap<>();
 
-        quantities.forEach((productId, quantity) -> {
+        // Validate all products and stock availability before mutating any product stock
+        for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+            String productId = entry.getKey();
+            int quantity = entry.getValue();
             Product product = productRepository.findByIdForUpdate(productId)
                     .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
             if (!Boolean.TRUE.equals(product.getIsActive())) {
                 throw new BusinessRuleException("Product is inactive: " + product.getName());
             }
-            product.deductStock(quantity);
+            if (product.getStockQuantity() == null || product.getStockQuantity() < quantity) {
+                throw new BusinessRuleException(
+                        "Insufficient stock for '" + product.getName() + "': requested " + quantity
+                                + ", available " + product.getStockQuantity());
+            }
             products.put(productId, product);
+        }
+
+        for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
+            String productId = entry.getKey();
+            int quantity = entry.getValue();
+            Product product = products.get(productId);
+            product.deductStock(quantity);
 
             SaleItem item = new SaleItem(productId, quantity, product.getSellingPrice());
             item.setSaleItemId(UUID.randomUUID());
             sale.addItem(item);
-        });
+        }
 
         sale.calculateTotal();
         Sale saved = saleRepository.saveAndFlush(sale);
