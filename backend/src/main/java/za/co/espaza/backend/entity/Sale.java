@@ -73,6 +73,7 @@ public class Sale {
     }
 
     public Sale(UUID userId, PaymentMethod paymentMethod, SaleStatus status, String notes) {
+        this.saleId = UUID.randomUUID();
         this.userId = userId;
         this.paymentMethod = paymentMethod;
         this.status = status;
