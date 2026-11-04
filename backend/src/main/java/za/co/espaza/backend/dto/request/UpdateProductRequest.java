@@ -1,13 +1,27 @@
 package za.co.espaza.backend.dto.request;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 
 public class UpdateProductRequest {
+    @Size(min = 1, max = 200)
     private String name;
+
+    @Size(max = 100)
     private String barcode;
+
+    @DecimalMin("0.01")
     private BigDecimal sellingPrice;
+
+    @DecimalMin("0.00")
     private BigDecimal costPrice;
+
+    @Min(0)
     private Integer lowStockThreshold;
+
     private String categoryId;
     private String description;
 
