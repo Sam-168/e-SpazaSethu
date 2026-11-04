@@ -1,262 +1,259 @@
-return (
-<div className="settings-page">
-<div className="settings-container">
-                                   {/* Page Header */}
-<div className="settings-header">
-<h1>Settings</h1>
-<p>Manage your account and application settings.</p>
-</div>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-  {/* Account Section */}
-<section className="settings-section">
-<h2>Account</h2>
-
-<div className="settings-card">
-<div className="setting-item">
-<div>
-<h3>Username</h3>
-<p>{user?.username || "Not available"}</p>
-</div>
-</div>
-
-<div className="setting-item">
-<div>
-<h3>Role</h3>
-<p>{user?.role || "Not available"}</p>
-</div>
-</div>
-
-<div className="setting-item">
-<div>
-<h3>Password</h3>
-<p>Update your account password.</p>
-</div>
-
-<button
- type="button"
-className="secondary-button"
-onClick={openPasswordModal}
->
-Change Password
-</button>
-</div>
-</div>
-</section>
-
-  {/* Shop Section */}
-<section className="settings-section">
-<h2>Shop</h2>
-
-<div className="settings-card">
-<div className="form-group">
-<label htmlFor="shopName">Shop Name</label>
-
-<input
- id="shopName"
-type="text"
-value={shopName}
-onChange={handleShopNameChange}
-placeholder="Enter shop name"
-/>
-
-<small>
- Your shop name is saved locally on this device.
-</small>
-</div>
-</div>
-</section>
-
-  {/* Admin Section */}
-{isAdmin && (
-<section className="settings-section">
-<h2>Administration</h2>
-
-<div className="settings-card">
-<div className="setting-item">
-<div>
-<h3>Manage Users</h3>
-<p>
-Add, edit and manage application users.
-</p>
-</div>
-
-<Link
-to="/settings/users"
-className="secondary-button"
->
-Manage Users
-</Link>
-</div>
-</div>
-</section>
-)}
-
-{/* About Section */}
-<section className="settings-section">
-<h2>About</h2>
-
-<div className="settings-card">
-<div className="setting-item">
-<div>
-<h3>Application</h3>
-<p>Stock Management System</p>
-</div>
-</div>
-
-<div className="setting-item">
-<div>
-<h3>Version</h3>
-<p>1.0.0</p>
-</div>
-</div>
-</div>
-</section>
-
-  {/* Logout Section */}
-<section className="settings-section logout-section">
-<h2>Logout</h2>
-
-<div className="settings-card">
-<div>
-<h3>Sign out of your account</h3>
-<p>
- You will need to sign in again to access the
- application.
-</p>
-</div>
-
-<button
- type="button"
-className="logout-button"
-onClick={handleLogout}
->
-Logout
-</button>
-</div>
-</section>
-</div>
-
-  {/* Change Password Modal */}
-{showPasswordModal && (
-<div
-className="modal-overlay"
-onClick={closePasswordModal}
->
-<div
-className="password-modal"
-onClick={(event) => event.stopPropagation()}
->
-<div className="modal-header">
-<h2>Change Password</h2>
-
-<button
-type="button"
-className="close-button"
-onClick={closePasswordModal}
-    disabled={isChangingPassword}
-    aria-label="Close"
-    >
-    ×
-    </button>
-    </div>
-
-    <form onSubmit={handleChangePassword}>
-                                         {/* Current Password */}
-<div className="form-group">
-<label htmlFor="currentPassword">
-Current Password
-</label>
-
-<input
-id="currentPassword"
-type="password"
-value={currentPassword}
-    onChange={(event) =>
-setCurrentPassword(event.target.value)
+:root {
+    font-family: 'Inter', sans-serif;
 }
-    placeholder="Enter current password"
-    disabled={isChangingPassword}
-/>
-</div>
 
-{/* New Password */}
-<div className="form-group">
-<label htmlFor="newPassword">
-New Password
-</label>
-
-<input
-id="newPassword"
-type="password"
-value={newPassword}
-    onChange={(event) =>
-setNewPassword(event.target.value)
+.settings-page {
+    min-height: 100vh;
+    background: #f7f5f0;
+    padding: 1.5rem 1rem 7rem;
 }
-    placeholder="Enter new password"
-    disabled={isChangingPassword}
-/>
 
-<small>
-Password must contain at least 8 characters.
-</small>
-</div>
-
-{/* Confirm Password */}
-<div className="form-group">
-<label htmlFor="confirmPassword">
-Confirm New Password
-</label>
-
-<input
-id="confirmPassword"
-type="password"
-value={confirmPassword}
-    onChange={(event) =>
-setConfirmPassword(event.target.value)
+.settings-shell {
+    max-width: 38rem;
+    margin: 0 auto;
 }
-    placeholder="Confirm new password"
-    disabled={isChangingPassword}
-/>
-</div>
 
-{/* Error */}
-{passwordError && (
-<div className="error-message">
-{passwordError}
-</div>
-)}
+.settings-header {
+    margin-bottom: 1.25rem;
+}
 
-{/* Success */}
-{passwordSuccess && (
-<div className="success-message">
-{passwordSuccess}
-</div>
-)}
+.eyebrow {
+    margin: 0 0 0.3rem;
+    color: #6b7280;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
 
-{/* Modal Actions */}
-<div className="modal-actions">
-<button
-type="button"
-className="secondary-button"
-onClick={closePasswordModal}
-    disabled={isChangingPassword}
->
-Cancel
-</button>
+.settings-header h1 {
+    margin: 0;
+    color: #111827;
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 800;
+}
 
-<button
-type="submit"
-className="primary-button"
-disabled={isChangingPassword}
->
-{isChangingPassword
-? "Changing..."
-: "Change Password"}
-</button>
-</div>
-</form>
-</div>
-</div>
-)}
-</div>
-);
+.settings-section {
+    margin-bottom: 1.25rem;
+}
+
+.settings-section h2 {
+    margin: 0 0 0.6rem;
+    color: #111827;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.settings-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
+    padding: 0.25rem 0.5rem;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.setting-row:last-child {
+    border-bottom: none;
+}
+
+.setting-row h3 {
+    margin: 0 0 0.2rem;
+    color: #111827;
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+
+.setting-row p {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.9rem;
+}
+
+.action-row {
+    align-items: center;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button,
+.close-button {
+    border: none;
+    border-radius: 0.9rem;
+    font: inherit;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.danger-button:hover,
+.close-button:hover {
+    opacity: 0.96;
+    transform: translateY(-1px);
+}
+
+.primary-button {
+    background: #111827;
+    color: #ffffff;
+    padding: 0.8rem 1rem;
+    font-weight: 600;
+}
+
+.secondary-button {
+    background: #f3f4f6;
+    color: #111827;
+    padding: 0.7rem 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.danger-button {
+    background: #dc2626;
+    color: #ffffff;
+    padding: 0.9rem 1.8rem;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    min-width: 140px;
+}
+
+.danger-button:hover {
+    background: #b91c1c;
+}
+
+.danger-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    color: #111827;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.form-group input {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.8rem;
+    padding: 0.8rem 0.9rem;
+    font: inherit;
+    background: #ffffff;
+    color: #111827;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: 2px solid rgba(17, 24, 39, 0.14);
+    outline-offset: 1px;
+}
+
+.form-group small {
+    color: #6b7280;
+    font-size: 0.76rem;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.52);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 50;
+}
+
+.modal-card {
+    width: min(100%, 28rem);
+    background: #ffffff;
+    border-radius: 1.25rem;
+    padding: 1rem;
+    box-shadow: 0 20px 40px rgba(17, 24, 39, 0.22);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.3rem;
+}
+
+.close-button {
+    background: transparent;
+    color: #4b5563;
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.error-message,
+.success-message {
+    border-radius: 0.7rem;
+    padding: 0.7rem 0.8rem;
+    margin-bottom: 0.9rem;
+    font-size: 0.9rem;
+}
+
+.error-message {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.success-message {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+@media (max-width: 500px) {
+    .setting-row,
+    .action-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .secondary-button,
+    .danger-button,
+    .primary-button {
+        width: 100%;
+    }
+}
