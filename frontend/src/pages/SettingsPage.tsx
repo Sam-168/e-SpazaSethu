@@ -12,7 +12,7 @@ import './SettingsPage.css';
 const SHOP_NAME_KEY = 'shopName';
 
 export default function SettingsPage() {
-    const { currentUser, logout } = useAuth();
+    const {currentUser, logout} = useAuth();
 
     const [shopName, setShopName] = useState('');
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -277,7 +277,8 @@ export default function SettingsPage() {
                             {passwordSuccess && <div className="success-message">{passwordSuccess}</div>}
 
                             <div className="modal-actions">
-                                <button type="button" className="secondary-button" onClick={closePasswordModal} disabled={isChangingPassword}>
+                                <button type="button" className="secondary-button" onClick={closePasswordModal}
+                                        disabled={isChangingPassword}>
                                     Cancel
                                 </button>
                                 <button type="submit" className="primary-button" disabled={isChangingPassword}>
