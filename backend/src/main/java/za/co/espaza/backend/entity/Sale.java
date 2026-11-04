@@ -73,6 +73,11 @@ public class Sale {
     }
 
     public Sale(UUID userId, PaymentMethod paymentMethod, SaleStatus status, String notes) {
+        this(null, userId, paymentMethod, status, notes);
+    }
+
+    public Sale(UUID saleId, UUID userId, PaymentMethod paymentMethod, SaleStatus status, String notes) {
+        this.saleId = saleId;
         this.userId = userId;
         this.paymentMethod = paymentMethod;
         this.status = status;
@@ -122,11 +127,13 @@ public class Sale {
         this.status = SaleStatus.COMPLETED;
     }
 
-    public void cancel() {
+    public void cancel(String reason) {
         if (status == SaleStatus.CANCELLED) {
             throw new IllegalStateException("A sale that is already cancelled cannot be cancelled again");
         }
         this.status = SaleStatus.CANCELLED;
+        String cancellation = "Cancellation reason: " + reason.trim();
+        this.notes = notes == null || notes.isBlank() ? cancellation : notes + "\n" + cancellation;
     }
 
     public UUID getSaleId() {

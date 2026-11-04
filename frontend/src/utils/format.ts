@@ -1,11 +1,8 @@
-const zarFormatter = new Intl.NumberFormat('en-ZA', {
-    style: 'currency',
-    currency: 'ZAR',
-    minimumFractionDigits: 2,
-});
-
 export function formatCurrency(value: number | null | undefined): string {
-    return zarFormatter.format(value ?? 0);
+    const currency = localStorage.getItem('storeCurrency') || 'ZAR';
+    return new Intl.NumberFormat('en-ZA', {
+        style: 'currency', currency, minimumFractionDigits: 2,
+    }).format(value ?? 0);
 }
 
 export function formatDate(value: string | Date, options?: Intl.DateTimeFormatOptions): string {

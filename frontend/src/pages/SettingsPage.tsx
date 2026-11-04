@@ -1,5 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { ChevronRight, KeyRound, Layers3, LogOut, ShieldCheck, UserRound, UsersRound } from 'lucide-react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { ChevronRight, KeyRound, Layers3, LogOut, Save, ShieldCheck, Store, UserRound, UsersRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +20,28 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
+    const [shopName, setShopName] = useState('e-SpazaSethu');
+    const [currencyCode, setCurrencyCode] = useState('ZAR');
+    const [storeSaving, setStoreSaving] = useState(false);
     const isAdmin = currentUser?.role === 'ADMIN';
+
+    useEffect(() => {
+        api.get<{shopName:string;currencyCode:string}>('/settings/store').then(({data}) => {
+            setShopName(data.shopName); setCurrencyCode(data.currencyCode);
+        }).catch(caught => setError(getApiErrorMessage(caught, 'Store settings could not be loaded.')));
+    }, []);
+
+    const saveStore = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!shopName.trim()) { setError('Enter a shop name.'); return; }
+        setStoreSaving(true); setError(null); setMessage(null);
+        try {
+            const {data}=await api.put<{shopName:string;currencyCode:string}>('/settings/store',{shopName:shopName.trim(),currencyCode});
+            localStorage.setItem('storeName',data.shopName); localStorage.setItem('storeCurrency',data.currencyCode);
+            setMessage('Store settings have been saved for every device.');
+        } catch (caught) { setError(getApiErrorMessage(caught,'Store settings could not be saved.')); }
+        finally { setStoreSaving(false); }
+    };
 
     const closePassword = () => {
         if (saving) return;
@@ -78,6 +99,10 @@ export default function SettingsPage() {
 
             {isAdmin && <section className="mb-8">
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Administration</h2>
+                <form onSubmit={saveStore} className="mb-5 border-y border-line bg-white px-4 py-5">
+                    <div className="mb-4 flex items-center gap-3"><Store className="h-5 w-5 text-brand-700" /><div><h3 className="font-semibold text-ink">Store identity</h3><p className="text-sm text-muted">Used consistently across devices and receipts.</p></div></div>
+                    <div className="grid gap-4 sm:grid-cols-[1fr_11rem_auto] sm:items-end"><TextField label="Shop name" value={shopName} onChange={event=>setShopName(event.target.value)} maxLength={120} /><label><span className="mb-1.5 block text-sm font-medium text-ink">Currency</span><select value={currencyCode} onChange={event=>setCurrencyCode(event.target.value)} className="min-h-12 w-full rounded-lg border border-line bg-white px-3.5 outline-none focus:border-brand-700 focus:ring-3 focus:ring-brand-100"><option value="ZAR">ZAR — Rand</option><option value="USD">USD — Dollar</option><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option></select></label><Button type="submit" loading={storeSaving} leadingIcon={<Save className="h-4 w-4" />}>Save</Button></div>
+                </form>
                 <div className="border-y border-line bg-white">
                     <SettingsRow icon={<UsersRound className="h-5 w-5" />} title="Staff accounts" description="Create users, roles and password resets" onClick={() => navigate('/settings/users')} />
                     <SettingsRow icon={<Layers3 className="h-5 w-5" />} title="Product categories" description="Organise the product catalogue" onClick={() => navigate('/products/categories')} />

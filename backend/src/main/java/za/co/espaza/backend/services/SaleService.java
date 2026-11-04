@@ -17,6 +17,7 @@ import za.co.espaza.backend.repository.SaleRepository;
 import za.co.espaza.backend.repository.ProductRepository;
 import za.co.espaza.backend.repository.StockMovementRepository;
 import za.co.espaza.backend.repository.UserRepository;
+import za.co.espaza.backend.service.SaleCostSnapshotService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,23 +37,34 @@ public class SaleService {
     private final ProductRepository productRepository;
     private final StockMovementRepository movementRepository;
     private final UserRepository userRepository;
+    private final SaleCostSnapshotService costSnapshots;
 
     public SaleService(SaleRepository saleRepository,
                        ProductRepository productRepository,
                        StockMovementRepository movementRepository,
-                       UserRepository userRepository) {
+                       UserRepository userRepository,
+                       SaleCostSnapshotService costSnapshots) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
         this.movementRepository = movementRepository;
         this.userRepository = userRepository;
+        this.costSnapshots = costSnapshots;
     }
 
     @Transactional
     public SaleResponse createSale(CreateSaleRequest request, UUID userId) {
+        UUID saleId = request.clientRequestId() == null ? UUID.randomUUID() : request.clientRequestId();
+        var existing = saleRepository.findById(saleId);
+        if (existing.isPresent()) {
+            if (!existing.get().getUserId().equals(userId)) {
+                throw new BusinessRuleException("This checkout request id has already been used");
+            }
+            return toResponse(existing.get());
+        }
         Map<String, Integer> quantities = new LinkedHashMap<>();
         request.items().forEach(item -> quantities.merge(item.productId(), item.quantity(), Integer::sum));
 
-        Sale sale = new Sale(userId, request.paymentMethod(), SaleStatus.COMPLETED, request.notes());
+        Sale sale = new Sale(saleId, userId, request.paymentMethod(), SaleStatus.COMPLETED, request.notes());
         Map<String, Product> products = new LinkedHashMap<>();
 
         quantities.forEach((productId, quantity) -> {
@@ -72,6 +84,10 @@ public class SaleService {
         sale.calculateTotal();
         Sale saved = saleRepository.saveAndFlush(sale);
         productRepository.saveAll(products.values());
+
+        for (SaleItem item : saved.getItems()) {
+            costSnapshots.record(item, products.get(item.getProductId()).getCostPrice());
+        }
 
         for (Map.Entry<String, Integer> entry : quantities.entrySet()) {
             StockMovement movement = new StockMovement();
@@ -109,7 +125,7 @@ public class SaleService {
     }
 
     @Transactional
-    public SaleResponse cancelSale(UUID id, UUID cancelledBy) {
+    public SaleResponse cancelSale(UUID id, UUID cancelledBy, String reason) {
         Sale sale = saleRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntityNotFoundException("Sale not found: " + id));
 
@@ -131,11 +147,11 @@ public class SaleService {
             movement.setQuantityChange(item.getQuantity());
             movement.setMovementType(MovementType.ADJUSTMENT);
             movement.setReferenceId(sale.getSaleId().toString());
-            movement.setNotes("Stock restored for cancelled sale");
+            movement.setNotes("Stock restored for cancelled sale: " + reason.trim());
             movementRepository.save(movement);
         }
 
-        sale.cancel();
+        sale.cancel(reason);
         productRepository.saveAll(restoredProducts.values());
         saleRepository.save(sale);
         return toResponse(sale);

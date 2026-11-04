@@ -227,6 +227,22 @@ CREATE INDEX idx_stocktake_item_discrep   ON stocktake_item (stocktake_id, discr
 -- CHANGE THIS BEFORE DEPLOYING TO ANY SHARED ENVIRONMENT
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS store_settings (
+    settings_id INT NOT NULL PRIMARY KEY,
+    shop_name VARCHAR(120) NOT NULL,
+    currency_code VARCHAR(3) NOT NULL
+);
+
+INSERT INTO store_settings (settings_id, shop_name, currency_code)
+SELECT 1, 'e-SpazaSethu', 'ZAR'
+WHERE NOT EXISTS (SELECT 1 FROM store_settings WHERE settings_id = 1);
+
+CREATE TABLE IF NOT EXISTS sale_item_cost_snapshot (
+    sale_item_id VARCHAR(36) NOT NULL PRIMARY KEY,
+    cost_price DECIMAL(10, 2) NOT NULL
+);
+
+
 INSERT INTO user (user_id, username, password_hash, role, is_active, created_at)
 VALUES (
            'a0000000-0000-0000-0000-000000000001',

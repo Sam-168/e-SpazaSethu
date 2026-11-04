@@ -97,6 +97,13 @@ public class ProductService {
         productRepository.save(product);
     }
 
+    @Transactional
+    public ProductResponse reactivateProduct(String id) {
+        Product product = findOrThrow(id);
+        product.setIsActive(true);
+        return ProductResponse.from(productRepository.save(product));
+    }
+
     @Transactional(readOnly = true)
     public ProductResponse getProductById(String id) {
         return ProductResponse.from(findOrThrow(id));
@@ -109,6 +116,15 @@ public class ProductService {
         String normalizedCategory = categoryId == null || categoryId.isBlank() ? null : categoryId.trim();
         List<Product> products = productRepository.searchActiveProducts(normalizedSearch, barcodeSearch, normalizedCategory);
         return products.stream().map(ProductResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> searchAllProducts(String search, String categoryId) {
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        String barcodeSearch = normalizedSearch == null ? null : normalizedSearch.replaceAll("[\\s-]", "");
+        String normalizedCategory = categoryId == null || categoryId.isBlank() ? null : categoryId.trim();
+        return productRepository.searchAllProducts(normalizedSearch, barcodeSearch, normalizedCategory)
+                .stream().map(ProductResponse::from).toList();
     }
 
     @Transactional(readOnly = true)

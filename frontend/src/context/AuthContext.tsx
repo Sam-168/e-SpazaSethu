@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User, AuthContextType } from '../types';
+import api from '../services/api';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -43,6 +44,14 @@ function loadStoredSession(): StoredSession {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [session, setSession] = useState<StoredSession>(loadStoredSession);
+
+    useEffect(() => {
+        if (!session.token) return;
+        api.get<{shopName:string;currencyCode:string}>('/settings/store').then(({data}) => {
+            localStorage.setItem('storeName', data.shopName);
+            localStorage.setItem('storeCurrency', data.currencyCode);
+        }).catch(() => { /* Defaults keep the app usable if settings are temporarily unavailable. */ });
+    }, [session.token]);
 
     const login = (newToken: string, user: User) => {
         localStorage.setItem('token', newToken);

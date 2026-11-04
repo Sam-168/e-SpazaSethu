@@ -143,17 +143,12 @@ export default function ReportsPage() {
                                 </div>
                             </section>
 
+                            <ProductRanking title="Top five by quantity" detail="Most units sold" products={report.topProductsByQuantity} value={product=>`${product.quantitySold} units`} />
+                            <ProductRanking title="Top five by revenue" detail="Highest sales value" products={report.topProductsByRevenue} value={product=>formatCurrency(product.revenue)} />
                             <section className="lg:col-span-2">
-                                <SectionTitle title="Top products" detail="Ranked by sales value" />
-                                {report.topProducts.length === 0 ? <EmptyState icon={<PackageOpen className="h-7 w-7" />} title="No product data" description="Product performance will appear after completed sales." /> : (
-                                    <div className="overflow-x-auto border-y border-line bg-white">
-                                        <table className="w-full min-w-[42rem] text-left">
-                                            <thead className="border-b border-line text-xs uppercase tracking-wide text-muted"><tr><th className="px-4 py-3 font-semibold">Product</th><th className="px-4 py-3 text-right font-semibold">Units</th><th className="px-4 py-3 text-right font-semibold">Sales</th><th className="px-4 py-3 text-right font-semibold">Profit</th></tr></thead>
-                                            <tbody className="divide-y divide-line">{report.topProducts.map((product, index) => <tr key={product.productId}><td className="px-4 py-4"><span className="mr-3 text-sm text-muted">{index + 1}</span><span className="font-medium text-ink">{product.productName}</span></td><td className="px-4 py-4 text-right text-muted">{product.quantitySold}</td><td className="px-4 py-4 text-right font-medium text-ink">{formatCurrency(product.revenue)}</td><td className="px-4 py-4 text-right font-medium text-brand-800">{formatCurrency(product.profit)}</td></tr>)}</tbody>
-                                        </table>
-                                    </div>
-                                )}
-                                <p className="mt-3 text-xs text-muted">Profit uses each product's current cost price. Cancelled sales are excluded.</p>
+                                <SectionTitle title="Stock requiring attention" detail={`${report.lowStockProducts.length} low-stock product${report.lowStockProducts.length===1?'':'s'}`} />
+                                {report.lowStockProducts.length===0?<p className="border-y border-line bg-white px-4 py-5 text-sm text-muted">All active products are above their low-stock thresholds.</p>:<ul className="divide-y divide-line border-y border-line bg-white">{report.lowStockProducts.map(product=><li key={product.productId} className="flex items-center justify-between gap-4 px-4 py-4"><span className="font-medium text-ink">{product.productName}</span><span className="text-sm text-muted">{product.stockQuantity} remaining · alert at {product.lowStockThreshold}</span></li>)}</ul>}
+                                <p className="mt-3 text-xs text-muted">Cancelled sales are excluded from performance totals.</p>
                             </section>
                         </div>
                     )}
@@ -169,4 +164,8 @@ function Metric({ label, value, last = false }: { label: string; value: string; 
 
 function SectionTitle({ title, detail }: { title: string; detail: string }) {
     return <div className="mb-3 flex items-end justify-between gap-4"><h2 className="text-lg font-semibold text-ink">{title}</h2><p className="text-xs text-muted">{detail}</p></div>;
+}
+
+function ProductRanking({title,detail,products,value}:{title:string;detail:string;products:PerformanceReport['topProducts'];value:(product:PerformanceReport['topProducts'][number])=>string}) {
+    return <section><SectionTitle title={title} detail={detail} />{products.length===0?<EmptyState icon={<PackageOpen className="h-7 w-7" />} title="No product data" description="Product performance will appear after completed sales." />:<ol className="divide-y divide-line border-y border-line bg-white">{products.map((product,index)=><li key={product.productId} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-4"><span className="text-sm font-semibold text-brand-700">{index+1}</span><span className="min-w-0"><span className="block truncate font-medium text-ink">{product.productName}</span><span className="mt-0.5 block text-xs text-muted">{formatCurrency(product.revenue)} revenue</span></span><span className="text-sm font-semibold text-ink">{value(product)}</span></li>)}</ol>}</section>;
 }

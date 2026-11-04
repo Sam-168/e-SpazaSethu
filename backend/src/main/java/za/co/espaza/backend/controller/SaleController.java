@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import za.co.espaza.backend.dto.request.CreateSaleRequest;
+import za.co.espaza.backend.dto.request.CancelSaleRequest;
 import za.co.espaza.backend.security.CurrentUserService;
 import za.co.espaza.backend.dto.response.SaleResponse;
 import za.co.espaza.backend.services.SaleService;
@@ -63,7 +64,9 @@ public class SaleController {
     // PATCH /api/v1/sales/{id}/cancel  (admin only)
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<SaleResponse> cancelSale(@PathVariable UUID id) {
-        return ResponseEntity.ok(saleService.cancelSale(id, currentUserService.getCurrentUserId()));
+    public ResponseEntity<SaleResponse> cancelSale(@PathVariable UUID id,
+            @Valid @RequestBody CancelSaleRequest request) {
+        return ResponseEntity.ok(saleService.cancelSale(
+                id, currentUserService.getCurrentUserId(), request.reason()));
     }
 }

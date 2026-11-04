@@ -35,6 +35,14 @@ public class ProductController {
         return ResponseEntity.ok(productService.getLowStockProducts());
     }
 
+    @GetMapping("/admin/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProductResponse>> getAllProducts(
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "categoryId", required = false) String categoryId) {
+        return ResponseEntity.ok(productService.searchAllProducts(search, categoryId));
+    }
+
     @GetMapping("/{id}")
    @PreAuthorize("hasAnyRole('ADMIN', 'CASHIER')")
     public ResponseEntity<ProductResponse> getProductById(@PathVariable("id") String id) {
@@ -62,6 +70,12 @@ public class ProductController {
     public ResponseEntity<Void> deactivateProduct(@PathVariable("id") String id) {
         productService.deactivateProduct(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/reactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProductResponse> reactivateProduct(@PathVariable("id") String id) {
+        return ResponseEntity.ok(productService.reactivateProduct(id));
     }
 
 

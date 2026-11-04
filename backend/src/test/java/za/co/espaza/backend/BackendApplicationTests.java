@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -138,6 +139,76 @@ class BackendApplicationTests {
                 "select count(*) from stock_movement where product_id = ?", Integer.class, productId))
                 .isZero();
     }
+
+    @Test
+    void retryingTheSameCheckoutDoesNotDuplicateTheSaleOrStockMovement() throws Exception {
+        String requestId = UUID.randomUUID().toString();
+        var checkout = objectMapper.createObjectNode().put("clientRequestId", requestId);
+        checkout.put("paymentMethod", "CARD");
+        checkout.putArray("items").addObject().put("productId", productId).put("quantity", 2);
+        String token = login(username, "checkout-password");
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mockMvc.perform(post("/api/v1/sales").header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON).content(checkout.toString()))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.saleId").value(requestId));
+        }
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(8);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from stock_movement where reference_id = ?", Integer.class, requestId)).isEqualTo(1);
+    }
+
+    @Test
+    void adminCanDeactivateListAndReactivateAProduct() throws Exception {
+        String adminUsername = "lifecycle-admin-" + UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into user (user_id, username, password_hash, role, is_active, created_at)
+                values (?, ?, ?, 'ADMIN', true, current_timestamp)
+                """, UUID.randomUUID().toString(), adminUsername, passwordEncoder.encode("admin-password"));
+        String token = login(adminUsername, "admin-password");
+
+        mockMvc.perform(patch("/api/v1/products/{id}/deactivate", productId).header("Authorization", token))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/products").param("search", "Test Bread").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.productId == '" + productId + "')]").isEmpty());
+        mockMvc.perform(get("/api/v1/products/admin/all").param("search", "Test Bread")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.productId == '" + productId + "')].isActive")
+                        .value(org.hamcrest.Matchers.contains(false)));
+        mockMvc.perform(patch("/api/v1/products/{id}/reactivate", productId).header("Authorization", token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.isActive").value(true));
+        mockMvc.perform(get("/api/v1/products").param("search", "Test Bread").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.productId == '" + productId + "')].isActive")
+                        .value(org.hamcrest.Matchers.contains(true)));
+    }
+
+    @Test
+    void storeSettingsPersistAndCashiersCannotChangeThem() throws Exception {
+        String adminUsername = "settings-admin-" + UUID.randomUUID();
+        jdbcTemplate.update("""
+                insert into user (user_id, username, password_hash, role, is_active, created_at)
+                values (?, ?, ?, 'ADMIN', true, current_timestamp)
+                """, UUID.randomUUID().toString(), adminUsername, passwordEncoder.encode("admin-password"));
+        String adminToken = login(adminUsername, "admin-password");
+        String cashierToken = login(username, "checkout-password");
+        String settings = objectMapper.createObjectNode()
+                .put("shopName", "Test Spaza").put("currencyCode", "ZAR").toString();
+
+        mockMvc.perform(put("/api/v1/settings/store").header("Authorization", cashierToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(settings))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/v1/settings/store").header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(settings))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.shopName").value("Test Spaza"));
+        mockMvc.perform(get("/api/v1/settings/store").header("Authorization", cashierToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.currencyCode").value("ZAR"));
+    }
     @Test
     void adminCancellationRestoresStockOnceAndCreatesAnAuditMovement() throws Exception {
         String adminUsername = "cancel-admin-" + UUID.randomUUID();
@@ -157,11 +228,16 @@ class BackendApplicationTests {
         String saleId = objectMapper.readTree(response).get("saleId").asText();
 
         mockMvc.perform(patch("/api/v1/sales/{id}/cancel", saleId)
-                        .header("Authorization", login(username, "checkout-password")))
+                        .header("Authorization", login(username, "checkout-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Customer return\"}"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(patch("/api/v1/sales/{id}/cancel", saleId)
-                        .header("Authorization", login(adminUsername, "admin-password")))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));
+                        .header("Authorization", login(adminUsername, "admin-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Customer return\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.notes").value(org.hamcrest.Matchers.containsString("Customer return")));
 
         assertThat(jdbcTemplate.queryForObject(
                 "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(10);
@@ -175,7 +251,9 @@ class BackendApplicationTests {
                 """, String.class, productId, saleId)).isEqualTo(adminId);
 
         mockMvc.perform(patch("/api/v1/sales/{id}/cancel", saleId)
-                        .header("Authorization", login(adminUsername, "admin-password")))
+                        .header("Authorization", login(adminUsername, "admin-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Second attempt\"}"))
                 .andExpect(status().isUnprocessableEntity());
         assertThat(jdbcTemplate.queryForObject(
                 "select stock_quantity from product where product_id = ?", Integer.class, productId)).isEqualTo(10);

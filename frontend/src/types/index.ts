@@ -87,6 +87,7 @@ export interface Sale {
     totalAmount: number;
     paymentMethod: PaymentMethod;
     status: SaleStatus;
+    notes?: string | null;
 }
 
 export interface SalesReportSummary {
@@ -126,6 +127,14 @@ export interface PerformanceReport {
     dailySales: DailySalesReport[];
     payments: PaymentReport[];
     topProducts: ProductPerformanceReport[];
+    topProductsByQuantity: ProductPerformanceReport[];
+    topProductsByRevenue: ProductPerformanceReport[];
+    lowStockProducts: Array<{
+        productId: string;
+        productName: string;
+        stockQuantity: number;
+        lowStockThreshold: number;
+    }>;
 }
 
 // --- Stocktakes ---

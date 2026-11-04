@@ -12,6 +12,8 @@ import za.co.espaza.backend.enums.SaleStatus;
 import za.co.espaza.backend.exception.BusinessRuleException;
 import za.co.espaza.backend.repository.ProductRepository;
 import za.co.espaza.backend.repository.SaleRepository;
+import za.co.espaza.backend.service.SaleCostSnapshotService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,10 +30,18 @@ import java.util.stream.Collectors;
 public class ReportService {
     private final SaleRepository saleRepository;
     private final ProductRepository productRepository;
+    private final SaleCostSnapshotService costSnapshots;
 
     public ReportService(SaleRepository saleRepository, ProductRepository productRepository) {
+        this(saleRepository, productRepository, null);
+    }
+
+    @Autowired
+    public ReportService(SaleRepository saleRepository, ProductRepository productRepository,
+                         SaleCostSnapshotService costSnapshots) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
+        this.costSnapshots = costSnapshots;
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +90,7 @@ public class ReportService {
 
             for (SaleItem item : sale.getItems()) {
                 Product product = products.get(item.getProductId());
-                BigDecimal itemProfit = item.getUnitPrice().subtract(costOf(product))
+                BigDecimal itemProfit = item.getUnitPrice().subtract(costAtSale(item, product))
                         .multiply(BigDecimal.valueOf(item.getQuantity()));
                 day.totalProfit = day.totalProfit.add(itemProfit);
 
@@ -101,15 +111,31 @@ public class ReportService {
                         entry.getValue().transactionCount, entry.getValue().totalAmount))
                 .sorted(Comparator.comparing(ReportPerformanceResponse.PaymentBreakdown::totalAmount).reversed())
                 .toList();
-        List<ReportPerformanceResponse.ProductPerformance> topProducts = productRows.entrySet().stream()
+        List<ReportPerformanceResponse.ProductPerformance> productPerformance = productRows.entrySet().stream()
                 .map(entry -> new ReportPerformanceResponse.ProductPerformance(entry.getKey(), entry.getValue().name,
                         entry.getValue().quantitySold, entry.getValue().revenue, entry.getValue().profit))
-                .sorted(Comparator.comparing(ReportPerformanceResponse.ProductPerformance::revenue).reversed())
-                .limit(10)
+                .toList();
+        List<ReportPerformanceResponse.ProductPerformance> topProductsByRevenue = productPerformance.stream()
+                .sorted(Comparator.comparing(ReportPerformanceResponse.ProductPerformance::revenue).reversed()
+                        .thenComparing(ReportPerformanceResponse.ProductPerformance::productName,
+                                String.CASE_INSENSITIVE_ORDER))
+                .limit(5)
+                .toList();
+        List<ReportPerformanceResponse.ProductPerformance> topProductsByQuantity = productPerformance.stream()
+                .sorted(Comparator.comparingLong(ReportPerformanceResponse.ProductPerformance::quantitySold).reversed()
+                        .thenComparing(ReportPerformanceResponse.ProductPerformance::productName,
+                                String.CASE_INSENSITIVE_ORDER))
+                .limit(5)
+                .toList();
+        List<ReportPerformanceResponse.LowStockProduct> lowStockProducts = productRepository.findLowStockProducts()
+                .stream()
+                .map(product -> new ReportPerformanceResponse.LowStockProduct(product.getProductId(), product.getName(),
+                        product.getStockQuantity(), product.getLowStockThreshold()))
                 .toList();
 
         return new ReportPerformanceResponse(from, to, salesTotal, profitTotal, sales.size(), unitsSold,
-                averageSale, dailySales, paymentRows, topProducts);
+                averageSale, dailySales, paymentRows, topProductsByRevenue, topProductsByQuantity,
+                topProductsByRevenue, lowStockProducts);
     }
 
     private List<Sale> completedSales(LocalDate from, LocalDate to) {
@@ -128,7 +154,7 @@ public class ReportService {
     private BigDecimal totalProfit(List<Sale> sales, Map<String, Product> products) {
         return sales.stream().flatMap(sale -> sale.getItems().stream()).map(item -> {
             Product product = products.get(item.getProductId());
-            BigDecimal cost = costOf(product);
+            BigDecimal cost = costAtSale(item, product);
             return item.getUnitPrice().subtract(cost).multiply(BigDecimal.valueOf(item.getQuantity()));
         }).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
@@ -143,6 +169,11 @@ public class ReportService {
 
     private BigDecimal costOf(Product product) {
         return product == null || product.getCostPrice() == null ? BigDecimal.ZERO : product.getCostPrice();
+    }
+
+    private BigDecimal costAtSale(SaleItem item, Product product) {
+        BigDecimal fallback = costOf(product);
+        return costSnapshots == null ? fallback : costSnapshots.costFor(item, fallback);
     }
 
     private void validateRange(LocalDate from, LocalDate to) {

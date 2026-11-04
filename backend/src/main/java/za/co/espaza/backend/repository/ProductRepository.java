@@ -19,6 +19,19 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     @Query("""
             SELECT p FROM Product p
             LEFT JOIN p.category c
+            WHERE (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR REPLACE(REPLACE(COALESCE(p.barcode, ''), ' ', ''), '-', '')
+                      LIKE CONCAT('%', :barcodeSearch, '%'))
+              AND (:categoryId IS NULL OR c.categoryId = :categoryId)
+            ORDER BY p.isActive DESC, p.name ASC
+            """)
+    List<Product> searchAllProducts(@Param("search") String search,
+                                    @Param("barcodeSearch") String barcodeSearch,
+                                    @Param("categoryId") String categoryId);
+
+    @Query("""
+            SELECT p FROM Product p
+            LEFT JOIN p.category c
             WHERE p.isActive = true
               AND (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
                    OR REPLACE(REPLACE(COALESCE(p.barcode, ''), ' ', ''), '-', '')
