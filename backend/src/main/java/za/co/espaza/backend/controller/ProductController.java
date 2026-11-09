@@ -9,6 +9,7 @@ import za.co.espaza.backend.dto.request.CreateProductRequest;
 import za.co.espaza.backend.dto.response.ProductResponse;
 import za.co.espaza.backend.dto.request.UpdateProductRequest;
 import za.co.espaza.backend.service.ProductService;
+import za.co.espaza.backend.service.BarcodeLookupService;
 
 import java.util.List;
 
@@ -16,9 +17,17 @@ import java.util.List;
 @RequestMapping("/api/v1/products")
 public class ProductController {
     private final ProductService productService;
+    private final BarcodeLookupService barcodeLookupService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, BarcodeLookupService barcodeLookupService) {
         this.productService = productService;
+        this.barcodeLookupService = barcodeLookupService;
+    }
+
+    @GetMapping("/barcode-lookup/{barcode}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BarcodeLookupService.LookupResult lookupBarcode(@PathVariable String barcode) {
+        return barcodeLookupService.lookup(barcode);
     }
 
     @GetMapping

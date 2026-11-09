@@ -59,6 +59,11 @@ public class StocktakeController {
         return ResponseEntity.ok(stocktakeService.submitCounts(id, counts));
     }
 
+    @PostMapping("/{id}/products/{productId}")
+    public ResponseEntity<StocktakeResponse> addProduct(@PathVariable UUID id, @PathVariable String productId) {
+        return ResponseEntity.ok(stocktakeService.addProduct(id, productId));
+    }
+
     // POST /api/v1/stocktakes/{id}/apply - apply adjustments and complete (admin)
     @PostMapping("/{id}/apply")
     public ResponseEntity<StocktakeResponse> applyAdjustments(@PathVariable UUID id) {

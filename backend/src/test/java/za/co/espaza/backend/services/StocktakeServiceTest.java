@@ -74,6 +74,29 @@ class StocktakeServiceTest {
     }
 
     @Test
+    void newlyRegisteredProductCanBeIncludedOnceDuringActiveStocktake() {
+        UUID stocktakeId = UUID.randomUUID();
+        Stocktake stocktake = new Stocktake(UUID.randomUUID(), null);
+        Product original = product("p-1", "Bread", "600100000001", 4);
+        Product discovered = product("p-2", "Sprite 500ml", "5449000332967", 0);
+        stocktake.addItem(new StocktakeItem(original.getProductId(), 4));
+        when(stocktakeRepository.findById(stocktakeId)).thenReturn(Optional.of(stocktake));
+        when(productRepository.findById("p-2")).thenReturn(Optional.of(discovered));
+        when(stocktakeRepository.save(stocktake)).thenReturn(stocktake);
+        when(productRepository.findAllById(any())).thenReturn(List.of(original, discovered));
+
+        StocktakeResponse added = service.addProduct(stocktakeId, "p-2");
+        StocktakeResponse repeated = service.addProduct(stocktakeId, "p-2");
+
+        assertEquals(2, added.items().size());
+        assertEquals(2, repeated.items().size());
+        assertEquals(0, added.items().stream()
+                .filter(item -> "5449000332967".equals(item.barcode()))
+                .findFirst().orElseThrow().systemQuantity());
+        verify(stocktakeRepository).save(stocktake);
+    }
+
+    @Test
     void applyAdjustmentsRejectsUncountedProducts() {
         UUID stocktakeId = UUID.randomUUID();
         Stocktake stocktake = new Stocktake(UUID.randomUUID(), null);

@@ -90,6 +90,22 @@ public class StocktakeService {
         return toResponse(stocktake);
     }
 
+    /** Includes a product registered after the stocktake snapshot was started. */
+    @Transactional
+    public StocktakeResponse addProduct(UUID stocktakeId, String productId) {
+        Stocktake stocktake = getInProgressStocktake(stocktakeId);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+        if (!product.getIsActive()) {
+            throw new BusinessRuleException("Inactive products cannot be counted");
+        }
+        if (stocktake.getItems().stream().anyMatch(item -> item.getProductId().equals(productId))) {
+            return toResponse(stocktake);
+        }
+        stocktake.addItem(new StocktakeItem(productId, product.getStockQuantity()));
+        return toResponse(stocktakeRepository.save(stocktake));
+    }
+
     /** Applies each counted discrepancy, records the audit trail and completes the stocktake. */
     @Transactional
     public StocktakeResponse applyAdjustments(UUID stocktakeId, UUID userId) {
