@@ -27,16 +27,14 @@ export default function ProductsPage() {
     const load = useCallback(async () => {
         setLoading(true); setError(null);
         try {
-            const [productResponse, categoryResponse] = await Promise.all([
-                api.get<Product[]>(showInactive ? '/products/admin/all' : '/products', { params: { search: search.trim() || undefined, categoryId: categoryId || undefined } }),
-                api.get<Category[]>('/categories'),
-            ]);
-            setProducts(productResponse.data); setCategories(categoryResponse.data);
+            const { data } = await api.get<Product[]>(showInactive ? '/products/admin/all' : '/products', { params: { search: search.trim() || undefined, categoryId: categoryId || undefined } });
+            setProducts(data);
         } catch (caught) { setError(getApiErrorMessage(caught, 'Products could not be loaded.')); }
         finally { setLoading(false); }
     }, [categoryId, search, showInactive]);
 
     useEffect(() => { const timer = window.setTimeout(() => void load(), 250); return () => window.clearTimeout(timer); }, [load]);
+    useEffect(() => { void api.get<Category[]>('/categories').then(({ data }) => setCategories(data)).catch(() => setCategories([])); }, []);
 
     return <div className="app-page">
         <PageHeader title="Products" description="Search prices and keep the shop catalogue accurate." action={admin ? <Link to="/products/new"><Button leadingIcon={<Plus className="h-5 w-5" />}><span className="hidden sm:inline">Add product</span><span className="sm:hidden">Add</span></Button></Link> : undefined} />
