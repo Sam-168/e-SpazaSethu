@@ -6,12 +6,12 @@ import za.co.espaza.backend.dto.response.ErrorResponse;
 import za.co.espaza.backend.dto.response.LoginResponse;
 import za.co.espaza.backend.dto.response.SetupStatusResponse;
 import za.co.espaza.backend.dto.response.UserResponse;
-import za.co.espaza.backend.security.CustomUserDetailsService;
 import za.co.espaza.backend.security.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import za.co.espaza.backend.security.UserPrincipal;
 import za.co.espaza.backend.service.UserService;
 import org.springframework.web.bind.annotation.*;
@@ -20,26 +20,24 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
     private final AuthenticationManager authenticationManager;
-    private final CustomUserDetailsService userDetailsService;
     private final JwtUtil jwtUtil;
     private final UserService userService;
 
     public AuthController(AuthenticationManager authenticationManager,
-                          CustomUserDetailsService userDetailsService,
                           JwtUtil jwtUtil,
                           UserService userService) {
         this.authenticationManager = authenticationManager;
-        this.userDetailsService = userDetailsService;
         this.jwtUtil = jwtUtil;
         this.userService = userService;
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        Authentication authentication;
         try {
             // This line does two things: checks the username exists,
             // and verifies the password matches the BCrypt hash in the DB
-            authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.username(),
                             request.password()
@@ -52,7 +50,7 @@ public class AuthController {
         }
 
         // If we get here, credentials are valid — generate a token
-        UserPrincipal userDetails = (UserPrincipal) userDetailsService.loadUserByUsername(request.username());
+        UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
         String token = jwtUtil.generateToken(userDetails, userDetails.getUserId());
         userService.updateLastLogin(userDetails.getUserId().toString());
 

@@ -18,7 +18,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     @Query("""
             SELECT p FROM Product p
-            LEFT JOIN p.category c
+            LEFT JOIN FETCH p.category c
             WHERE (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
                    OR REPLACE(REPLACE(COALESCE(p.barcode, ''), ' ', ''), '-', '')
                       LIKE CONCAT('%', :barcodeSearch, '%'))
@@ -31,7 +31,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     @Query("""
             SELECT p FROM Product p
-            LEFT JOIN p.category c
+            LEFT JOIN FETCH p.category c
             WHERE p.isActive = true
               AND (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
                    OR REPLACE(REPLACE(COALESCE(p.barcode, ''), ' ', ''), '-', '')
@@ -45,6 +45,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     @Query("""
             SELECT p FROM Product p
+            LEFT JOIN FETCH p.category
             WHERE p.isActive = true
               AND p.lowStockThreshold IS NOT NULL
               AND p.stockQuantity <= p.lowStockThreshold
